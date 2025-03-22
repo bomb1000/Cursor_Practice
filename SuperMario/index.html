@@ -229,12 +229,15 @@
         let canJump = true;
         let score = 0;
         let gameStarted = false;
-        let levelWidth = 200; // Increased from 100 for larger map
+        let levelWidth = 300; // Increased from 200 for even larger map
         let worldGravity = 0.04; // Reduced from 0.2 (5x slower)
         let jumpPower = 1; // Adjusted for the slower gravity
         let moveSpeed = 0.15;
         let mushrooms = []; // Array to store mushrooms
         let characterIsBig = false; // Track if character has eaten a mushroom
+        let characterHasFirePower = false; // Track if character has fire flower power
+        let goombas = []; // Array to store goomba enemies
+        let fireballs = []; // Array to store fireballs
         let cameraDistance = 12; // Distance from character
         let cameraHeight = 5; // Height above character
         let cameraAngle = 0; // Angle around character (in radians)
@@ -247,6 +250,12 @@
         let coinSound;
         let mushroomSound;
         let hitBlockSound;
+        // Create flowers array to track fire flowers
+        let flowers = []; // Array to store fire flowers
+        // Add lives and game over state
+        let lives = 3; // Starting lives
+        let isGameOver = false; // Game over state
+        let gameOverMusic; // Game over music element
 
         // Handle file upload
         document.getElementById('character-upload').addEventListener('change', function(event) {
@@ -299,6 +308,9 @@
             document.querySelector('.progress-bar').style.display = 'block';
             document.querySelector('#loading-overlay h2').textContent = 'Loading Game...';
             
+            // Initialize audio context with user interaction
+            initAudio();
+            
             // Initialize the game
             initGame();
         });
@@ -313,6 +325,382 @@
                 location.reload(); // Simple restart by reloading the page
             }
         });
+
+        // Initialize and play all audio elements
+        function initAudio() {
+            try {
+                // Create a persistent audio context
+                window.gameAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Force resume the audio context on user interaction
+                if (window.gameAudioContext.state === 'suspended') {
+                    window.gameAudioContext.resume();
+                }
+                
+                // Use a simple beep sound to test audio
+                function playBeep() {
+                    const oscillator = window.gameAudioContext.createOscillator();
+                    const gainNode = window.gameAudioContext.createGain();
+                    
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(440, window.gameAudioContext.currentTime);
+                    oscillator.connect(gainNode);
+                    gainNode.connect(window.gameAudioContext.destination);
+                    
+                    gainNode.gain.setValueAtTime(0.1, window.gameAudioContext.currentTime);
+                    oscillator.start();
+                    oscillator.stop(window.gameAudioContext.currentTime + 0.2);
+                    
+                    console.log("Beep sound played successfully");
+                }
+                
+                // Play a test beep immediately
+                playBeep();
+                
+                // Create background music generator
+                window.playBackgroundMusic = function() {
+                    // Mario theme notes (complete extended version with slower tempo)
+                    const marioTheme = [
+                        // Main theme - part 1
+                        {note: 'E5', duration: 0.18},
+                        {note: 'E5', duration: 0.18},
+                        {note: 'rest', duration: 0.18},
+                        {note: 'E5', duration: 0.18},
+                        {note: 'rest', duration: 0.18},
+                        {note: 'C5', duration: 0.18},
+                        {note: 'E5', duration: 0.36},
+                        {note: 'G5', duration: 0.36},
+                        {note: 'rest', duration: 0.36},
+                        {note: 'G4', duration: 0.36},
+                        {note: 'rest', duration: 0.36},
+                        
+                        // Second part
+                        {note: 'C5', duration: 0.36},
+                        {note: 'rest', duration: 0.18},
+                        {note: 'G4', duration: 0.18},
+                        {note: 'rest', duration: 0.18},
+                        {note: 'E4', duration: 0.36},
+                        {note: 'rest', duration: 0.18},
+                        {note: 'A4', duration: 0.18},
+                        {note: 'rest', duration: 0.18},
+                        {note: 'B4', duration: 0.18},
+                        {note: 'rest', duration: 0.18},
+                        {note: 'Bb4', duration: 0.18},
+                        {note: 'A4', duration: 0.36},
+                        
+                        // Third part
+                        {note: 'G4', duration: 0.24},
+                        {note: 'E5', duration: 0.24},
+                        {note: 'G5', duration: 0.24},
+                        {note: 'A5', duration: 0.24},
+                        {note: 'F5', duration: 0.24},
+                        {note: 'G5', duration: 0.24},
+                        {note: 'rest', duration: 0.24},
+                        {note: 'E5', duration: 0.24},
+                        {note: 'rest', duration: 0.24},
+                        {note: 'C5', duration: 0.24},
+                        {note: 'D5', duration: 0.24},
+                        {note: 'B4', duration: 0.24},
+                        {note: 'rest', duration: 0.48},
+                        
+                        // Fourth part - repeat of main theme
+                        {note: 'G5', duration: 0.24},
+                        {note: 'F5', duration: 0.24},
+                        {note: 'E5', duration: 0.24},
+                        {note: 'D5', duration: 0.24},
+                        {note: 'C5', duration: 0.24},
+                        {note: 'D5', duration: 0.24},
+                        {note: 'E5', duration: 0.24},
+                        {note: 'C5', duration: 0.24},
+                        {note: 'rest', duration: 0.24},
+                        {note: 'A4', duration: 0.24},
+                        {note: 'G4', duration: 0.24},
+                        {note: 'rest', duration: 0.48},
+                        
+                        // Fifth part - complete ending
+                        {note: 'C5', duration: 0.18},
+                        {note: 'rest', duration: 0.18},
+                        {note: 'G4', duration: 0.18},
+                        {note: 'rest', duration: 0.18},
+                        {note: 'E4', duration: 0.36},
+                        {note: 'rest', duration: 0.18},
+                        {note: 'A4', duration: 0.18},
+                        {note: 'rest', duration: 0.18},
+                        {note: 'B4', duration: 0.18},
+                        {note: 'rest', duration: 0.18},
+                        {note: 'Bb4', duration: 0.18},
+                        {note: 'A4', duration: 0.36},
+                        
+                        // Final part
+                        {note: 'G4', duration: 0.24},
+                        {note: 'E5', duration: 0.24},
+                        {note: 'G5', duration: 0.24},
+                        {note: 'A5', duration: 0.24},
+                        {note: 'F5', duration: 0.24},
+                        {note: 'G5', duration: 0.24},
+                        {note: 'rest', duration: 0.24},
+                        {note: 'E5', duration: 0.24},
+                        {note: 'rest', duration: 0.24},
+                        {note: 'C5', duration: 0.24},
+                        {note: 'D5', duration: 0.24},
+                        {note: 'B4', duration: 0.24}
+                    ];
+                    
+                    // Frequency map for notes
+                    const noteFrequency = {
+                        'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'F4': 349.23, 'G4': 392.00, 'A4': 440.00, 'B4': 493.88,
+                        'Bb4': 466.16,
+                        'C5': 523.25, 'D5': 587.33, 'E5': 659.25, 'F5': 698.46, 'G5': 783.99, 'A5': 880.00, 'B5': 987.77
+                    };
+                    
+                    // Create gain node for volume control with softer sound
+                    const gainNode = window.gameAudioContext.createGain();
+                    gainNode.gain.value = 0.10; // Lower volume for background music
+                    
+                    // Add a filter to soften the harsh sound
+                    const filter = window.gameAudioContext.createBiquadFilter();
+                    filter.type = "lowpass";
+                    filter.frequency.value = 1500;
+                    filter.Q.value = 0.5;
+                    
+                    // Connect nodes: oscillator -> filter -> gain -> destination
+                    filter.connect(gainNode);
+                    gainNode.connect(window.gameAudioContext.destination);
+                    
+                    // Keep track of active oscillators
+                    window.activeOscillators = [];
+                    
+                    // Function to play the theme
+                    function playTheme() {
+                        let time = window.gameAudioContext.currentTime;
+                        
+                        // Play each note in sequence
+                        marioTheme.forEach(sound => {
+                            if (sound.note !== 'rest') {
+                                // Create oscillator for the note
+                                const oscillator = window.gameAudioContext.createOscillator();
+                                oscillator.type = 'square'; // Square wave for 8-bit sound
+                                oscillator.frequency.value = noteFrequency[sound.note];
+                                
+                                // Add slight envelope to reduce harshness
+                                const noteGain = window.gameAudioContext.createGain();
+                                noteGain.gain.setValueAtTime(0, time);
+                                noteGain.gain.linearRampToValueAtTime(1, time + 0.01);
+                                noteGain.gain.linearRampToValueAtTime(0.7, time + sound.duration - 0.01);
+                                noteGain.gain.linearRampToValueAtTime(0, time + sound.duration);
+                                
+                                // Connect to filter
+                                oscillator.connect(noteGain);
+                                noteGain.connect(filter);
+                                
+                                // Schedule note
+                                oscillator.start(time);
+                                oscillator.stop(time + sound.duration);
+                                
+                                // Keep track of active oscillators
+                                window.activeOscillators.push(oscillator);
+                                
+                                // Remove from tracking when done
+                                oscillator.onended = function() {
+                                    const index = window.activeOscillators.indexOf(oscillator);
+                                    if (index !== -1) {
+                                        window.activeOscillators.splice(index, 1);
+                                    }
+                                };
+                            }
+                            // Advance time whether it's a note or rest
+                            time += sound.duration;
+                        });
+                        
+                        // Return total duration to schedule the next loop
+                        return time - window.gameAudioContext.currentTime;
+                    }
+                    
+                    // Play and loop
+                    function loop() {
+                        if (window.isMusicPlaying) {
+                            const duration = playTheme();
+                            // Schedule next loop
+                            window.musicLoopTimeout = setTimeout(loop, duration * 1000);
+                        }
+                    }
+                    
+                    // Start the music loop
+                    window.isMusicPlaying = true;
+                    loop();
+                    
+                    console.log("Background music started");
+                };
+                
+                // Function to stop background music
+                window.stopBackgroundMusic = function() {
+                    window.isMusicPlaying = false;
+                    
+                    // Clear any pending loop timeout
+                    if (window.musicLoopTimeout) {
+                        clearTimeout(window.musicLoopTimeout);
+                        window.musicLoopTimeout = null;
+                    }
+                    
+                    // Stop all active oscillators
+                    if (window.activeOscillators && window.activeOscillators.length > 0) {
+                        const currentTime = window.gameAudioContext.currentTime;
+                        window.activeOscillators.forEach(osc => {
+                            try {
+                                osc.stop(currentTime);
+                            } catch (e) {
+                                // Ignore errors from already stopped oscillators
+                            }
+                        });
+                        window.activeOscillators = [];
+                    }
+                    
+                    console.log("Background music stopped");
+                };
+                
+                // Create inline sound functions that use the audio context
+                window.playCoinSound = function() {
+                    const oscillator = window.gameAudioContext.createOscillator();
+                    const gainNode = window.gameAudioContext.createGain();
+                    
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(880, window.gameAudioContext.currentTime);
+                    oscillator.connect(gainNode);
+                    gainNode.connect(window.gameAudioContext.destination);
+                    
+                    gainNode.gain.setValueAtTime(0.1, window.gameAudioContext.currentTime);
+                    oscillator.start();
+                    oscillator.stop(window.gameAudioContext.currentTime + 0.1);
+                };
+                
+                window.playJumpSound = function() {
+                    const oscillator = window.gameAudioContext.createOscillator();
+                    const gainNode = window.gameAudioContext.createGain();
+                    
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(440, window.gameAudioContext.currentTime);
+                    oscillator.connect(gainNode);
+                    gainNode.connect(window.gameAudioContext.destination);
+                    
+                    gainNode.gain.setValueAtTime(0.1, window.gameAudioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(330, window.gameAudioContext.currentTime + 0.2);
+                    oscillator.start();
+                    oscillator.stop(window.gameAudioContext.currentTime + 0.2);
+                };
+                
+                window.playMushroomSound = function() {
+                    const oscillator = window.gameAudioContext.createOscillator();
+                    const gainNode = window.gameAudioContext.createGain();
+                    
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(660, window.gameAudioContext.currentTime);
+                    oscillator.connect(gainNode);
+                    gainNode.connect(window.gameAudioContext.destination);
+                    
+                    gainNode.gain.setValueAtTime(0.1, window.gameAudioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(880, window.gameAudioContext.currentTime + 0.3);
+                    oscillator.start();
+                    oscillator.stop(window.gameAudioContext.currentTime + 0.3);
+                };
+                
+                window.playHitBlockSound = function() {
+                    const oscillator = window.gameAudioContext.createOscillator();
+                    const gainNode = window.gameAudioContext.createGain();
+                    
+                    oscillator.type = 'square';
+                    oscillator.frequency.setValueAtTime(220, window.gameAudioContext.currentTime);
+                    oscillator.connect(gainNode);
+                    gainNode.connect(window.gameAudioContext.destination);
+                    
+                    gainNode.gain.setValueAtTime(0.1, window.gameAudioContext.currentTime);
+                    oscillator.start();
+                    oscillator.stop(window.gameAudioContext.currentTime + 0.1);
+                };
+                
+                // Add a music toggle button
+                const musicButton = document.createElement('button');
+                musicButton.innerText = 'Music: OFF';
+                musicButton.style.position = 'absolute';
+                musicButton.style.top = '50px';
+                musicButton.style.right = '10px';
+                musicButton.style.zIndex = '1000';
+                musicButton.style.padding = '8px 12px';
+                musicButton.style.backgroundColor = '#e74c3c';
+                musicButton.style.color = 'white';
+                musicButton.style.border = 'none';
+                musicButton.style.borderRadius = '4px';
+                musicButton.style.fontWeight = 'bold';
+                
+                // Flag to track if music is playing
+                window.isMusicPlaying = false;
+                
+                musicButton.addEventListener('click', function() {
+                    if (!window.isMusicPlaying) {
+                        // Stop any existing music first
+                        window.stopBackgroundMusic();
+                        // Then start fresh
+                        window.playBackgroundMusic();
+                        this.innerText = 'Music: ON';
+                        this.style.backgroundColor = '#2ecc71';
+                    } else {
+                        window.stopBackgroundMusic();
+                        this.innerText = 'Music: OFF';
+                        this.style.backgroundColor = '#e74c3c';
+                    }
+                });
+                
+                document.getElementById('game-container').appendChild(musicButton);
+                
+                // Add a clear audio test button
+                const soundButton = document.createElement('button');
+                soundButton.innerText = 'Test Audio';
+                soundButton.style.position = 'absolute';
+                soundButton.style.top = '10px';
+                soundButton.style.right = '10px';
+                soundButton.style.zIndex = '1000';
+                soundButton.style.padding = '8px 12px';
+                soundButton.style.backgroundColor = '#e74c3c';
+                soundButton.style.color = 'white';
+                soundButton.style.border = 'none';
+                soundButton.style.borderRadius = '4px';
+                soundButton.style.fontWeight = 'bold';
+                
+                soundButton.addEventListener('click', function() {
+                    // Resume audio context if suspended
+                    if (window.gameAudioContext.state === 'suspended') {
+                        window.gameAudioContext.resume();
+                    }
+                    
+                    // Play all test sounds in sequence
+                    playBeep();
+                    setTimeout(() => window.playCoinSound(), 300);
+                    setTimeout(() => window.playJumpSound(), 600);
+                    setTimeout(() => window.playMushroomSound(), 900);
+                    setTimeout(() => window.playHitBlockSound(), 1200);
+                    
+                    // Update button text to confirm test
+                    this.innerText = 'Audio Tested!';
+                    setTimeout(() => {
+                        this.innerText = 'Test Audio';
+                    }, 2000);
+                });
+                
+                document.getElementById('game-container').appendChild(soundButton);
+                
+                // Start background music automatically after a delay
+                setTimeout(() => {
+                    if (!window.isMusicPlaying) {
+                        window.playBackgroundMusic();
+                        musicButton.innerText = 'Music: ON';
+                        musicButton.style.backgroundColor = '#2ecc71';
+                    }
+                }, 1000);
+                
+                console.log('Audio system initialized with Web Audio API');
+            } catch (e) {
+                console.error('Audio initialization error:', e);
+            }
+        }
 
         // Initialize Three.js scene
         function initGame() {
@@ -354,9 +742,6 @@
             // Create clock for animations
             clock = new THREE.Clock();
             
-            // Load audio
-            loadAudio();
-            
             // Load assets and build level
             // Show loading overlay during asset loading
             document.getElementById('loading-overlay').style.display = 'flex';
@@ -384,30 +769,6 @@
             
             // Prevent context menu from appearing on right-click
             document.getElementById('game-canvas').addEventListener('contextmenu', event => event.preventDefault());
-        }
-        
-        // Load game audio
-        function loadAudio() {
-            // Background music
-            backgroundMusic = new Audio('https://assets.mixkit.co/music/preview/mixkit-game-level-music-689.mp3');
-            backgroundMusic.loop = true;
-            backgroundMusic.volume = 0.5;
-            
-            // Jump sound
-            jumpSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-player-jumping-in-a-video-game-2043.mp3');
-            jumpSound.volume = 0.6;
-            
-            // Coin sound
-            coinSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3');
-            coinSound.volume = 0.6;
-            
-            // Mushroom sound
-            mushroomSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3');
-            mushroomSound.volume = 0.6;
-            
-            // Hit block sound
-            hitBlockSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-explainer-video-game-alert-sweep-236.mp3');
-            hitBlockSound.volume = 0.6;
         }
         
         // Update camera position based on angle, height and distance
@@ -589,6 +950,9 @@
                 createPlatform(-55, 7, 5, 1, 3, 0x3D9970);
                 createPlatform(-65, 8, 5, 1, 3, 0x3D9970);
                 createPlatform(-75, 9, 5, 1, 3, 0x3D9970);
+                createPlatform(-85, 10, 5, 1, 3, 0x3D9970);
+                createPlatform(-95, 11, 5, 1, 3, 0x3D9970);
+                createPlatform(-105, 12, 5, 1, 3, 0x3D9970);
                 
                 // Right side platforms
                 createPlatform(5, 3, 5, 1, 3, 0x3D9970);
@@ -599,27 +963,43 @@
                 createPlatform(55, 8, 5, 1, 3, 0x3D9970);
                 createPlatform(65, 9, 5, 1, 3, 0x3D9970);
                 createPlatform(75, 10, 5, 1, 3, 0x3D9970);
+                createPlatform(85, 11, 5, 1, 3, 0x3D9970);
+                createPlatform(95, 12, 5, 1, 3, 0x3D9970);
+                createPlatform(105, 13, 5, 1, 3, 0x3D9970);
                 
-                // Middle elevated platforms
-                createPlatform(-5, 6, 3, 1, 3, 0x2ECC71);
-                createPlatform(0, 8, 3, 1, 3, 0x2ECC71);
-                createPlatform(5, 10, 3, 1, 3, 0x2ECC71);
-                createPlatform(0, 12, 3, 1, 3, 0x2ECC71);
-                createPlatform(-5, 14, 3, 1, 3, 0x2ECC71);
+                // Add question blocks at new positions (platform/ground height + 10)
+                // Near starting area - ground is around y=0, so blocks at y=10
+                createQuestionBlock(0, 10);  // Ground (0) + 10
+                createQuestionBlock(3, 10);
+                createQuestionBlock(-3, 10);
                 
-                // Add more question blocks
-                createQuestionBlock(8, 6);
-                createQuestionBlock(-5, 5);
-                createQuestionBlock(18, 7);
-                createQuestionBlock(-15, 6);
-                createQuestionBlock(28, 8);
-                createQuestionBlock(-25, 7);
-                createQuestionBlock(35, 9);
-                createQuestionBlock(-35, 8);
-                createQuestionBlock(45, 10);
-                createQuestionBlock(-45, 9);
-                createQuestionBlock(55, 11);
-                createQuestionBlock(0, 10);
+                // Near platforms - positioned 10 units above their platforms
+                // Platform at y=2, question blocks at y=12 (platform + 10)
+                createQuestionBlock(-8, 12);
+                createQuestionBlock(-6, 12);
+                
+                // Platform at y=3, question blocks at y=13
+                createQuestionBlock(5, 13); 
+                createQuestionBlock(7, 13);
+                
+                // Further platforms - question blocks positioned 10 units above platform 
+                createQuestionBlock(-18, 13); // Platform at y=3, block at y=13
+                createQuestionBlock(15, 14);  // Platform at y=4, block at y=14
+                
+                createQuestionBlock(-25, 14); // Platform at y=4, block at y=14
+                createQuestionBlock(25, 15);  // Platform at y=5, block at y=15
+                
+                createQuestionBlock(-35, 15); // Platform at y=5, block at y=15
+                createQuestionBlock(35, 16);  // Platform at y=6, block at y=16
+                
+                createQuestionBlock(-45, 16); // Platform at y=6, block at y=16
+                createQuestionBlock(45, 17);  // Platform at y=7, block at y=17
+                
+                createQuestionBlock(-55, 17); // Platform at y=7, block at y=17
+                createQuestionBlock(55, 18);  // Platform at y=8, block at y=18
+                
+                createQuestionBlock(-65, 18); // Platform at y=8, block at y=18
+                createQuestionBlock(65, 19);  // Platform at y=9, block at y=19
                 
                 // Add coins
                 createCoins();
@@ -632,6 +1012,10 @@
                 createCloud(30, 15, -6);
                 createCloud(50, 18, -7);
                 createCloud(70, 15, -5);
+                createCloud(90, 18, -7);
+                createCloud(-70, 15, -6);
+                createCloud(-90, 18, -7);
+                createCloud(-110, 15, -5);
                 
                 // Add mountains in background
                 createMountain(-60, 0, -15, 15, 0x2E8B57);
@@ -640,6 +1024,11 @@
                 createMountain(20, 0, -20, 15, 0x2E8B57);
                 createMountain(50, 0, -15, 12, 0x2E8B57);
                 createMountain(70, 0, -18, 18, 0x2E8B57);
+                createMountain(-90, 0, -15, 14, 0x2E8B57);
+                createMountain(90, 0, -18, 16, 0x2E8B57);
+                
+                // Add goombas
+                addGoombas();
                 
                 updateProgressBar(100);
                 resolve();
@@ -682,7 +1071,7 @@
             block.userData = {
                 isQuestionBlock: true,
                 hit: false, // Track if the block has been hit
-                containsMushroom: true // This block contains a mushroom
+                containsItem: Math.random() < 0.7 ? 'mushroom' : 'fireflower' // 70% chance for mushroom, 30% for fire flower
             };
             scene.add(block);
             platforms.push(block);
@@ -883,7 +1272,10 @@
             const delta = clock.getDelta();
             updateCharacter(delta);
             updateObjects(delta);
-            updateMushrooms(delta); // Update mushrooms
+            updateMushrooms(delta);
+            updateFireFlowers(delta); // Add fire flowers update
+            updateGoombas(delta);
+            updateFireballs(delta);
             updateCamera();
             
             renderer.render(scene, camera);
@@ -891,12 +1283,12 @@
         
         // Update character position and physics
         function updateCharacter(delta) {
-            if (!character) return;
+            if (!character || isGameOver) return;
             
             // Apply gravity (slower falling)
             character.userData.velocity.y -= worldGravity;
             
-            // Jump - ONLY Space key now (removed ArrowUp)
+            // Jump - ONLY Space key now
             if (keyboard['Space'] && character.userData.onGround && canJump) {
                 character.userData.velocity.y = jumpPower;
                 character.userData.onGround = false;
@@ -904,10 +1296,24 @@
                 canJump = false; // Prevent holding space to continuously jump
                 
                 // Play jump sound
-                if (jumpSound && jumpSound.readyState >= 2) {
-                    jumpSound.currentTime = 0;
-                    jumpSound.play();
+                if (window.gameAudioContext && window.playJumpSound) {
+                    try {
+                        window.playJumpSound();
+                    } catch(e) {
+                        console.log('Jump sound error:', e);
+                    }
                 }
+            }
+            
+            // Shoot fireball with E key
+            if (keyboard['KeyE'] && characterHasFirePower && !character.userData.fireballCooldown) {
+                createFireball();
+                
+                // Add cooldown to prevent spam
+                character.userData.fireballCooldown = true;
+                setTimeout(() => {
+                    character.userData.fireballCooldown = false;
+                }, 500); // 500ms cooldown between fireballs
             }
             
             // Move left/right
@@ -933,22 +1339,14 @@
                 character.position.x = halfLevelWidth;
             }
             
-            // Fall off the bottom
-            if (character.position.y < -10) {
-                // Reset character position if they fall off
-                character.position.set(0, 5, 0);
-                character.userData.velocity.set(0, 0, 0);
-                
-                // Reset character size if powered up
-                if (characterIsBig) {
-                    character.scale.set(1, 1, 1);
-                    characterIsBig = false;
-                    
-                    // Update character dimensions in userData
-                    character.userData.width = 1.0;
-                    character.userData.height = 2.6;
-                    character.userData.depth = 0.7;
-                }
+            // Prevent falling below ground
+            if (character.position.y < -3) {
+                loseLife();
+            }
+            
+            // Reset jump when space is released
+            if (!keyboard['Space']) {
+                canJump = true;
             }
             
             // Check platform collisions
@@ -957,13 +1355,11 @@
                 if (checkCollision(character, platform)) {
                     handleCollision(character, platform);
                     
-                    // Check if hitting question block from below
-                    if (platform.userData && platform.userData.isQuestionBlock && 
-                        !platform.userData.hit && 
-                        character.position.y < platform.position.y &&
-                        Math.abs(character.userData.velocity.y) > 0) {
-                        
-                        hitQuestionBlock(platform);
+                    // Check if hitting question block from below with improved detection
+                    if (platform.userData && platform.userData.isQuestionBlock && !platform.userData.hit) {
+                        if (checkBlockHitFromBelow(character, platform)) {
+                            hitQuestionBlock(platform);
+                        }
                     }
                 }
             }
@@ -1139,9 +1535,12 @@
             coin.visible = false;
             
             // Play coin sound
-            if (coinSound && coinSound.readyState >= 2) {
-                coinSound.currentTime = 0;
-                coinSound.play();
+            if (window.gameAudioContext && window.playCoinSound) {
+                try {
+                    window.playCoinSound();
+                } catch(e) {
+                    console.log('Coin sound error:', e);
+                }
             }
             
             // Increase score
@@ -1364,9 +1763,12 @@
                 character.userData.depth = 1.05;
                 
                 // Play mushroom sound
-                if (mushroomSound && mushroomSound.readyState >= 2) {
-                    mushroomSound.currentTime = 0;
-                    mushroomSound.play();
+                if (window.gameAudioContext && window.playMushroomSound) {
+                    try {
+                        window.playMushroomSound();
+                    } catch(e) {
+                        console.log('Mushroom sound error:', e);
+                    }
                 }
             }
             
@@ -1379,6 +1781,433 @@
             document.getElementById('score-text').textContent = score;
         }
         
+        // Create a Goomba enemy
+        function createGoomba(x, y) {
+            const goombaGroup = new THREE.Group();
+            
+            // Goomba body (brown mushroom shape)
+            const bodyGeometry = new THREE.CylinderGeometry(0.7, 0.7, 0.7, 8);
+            const bodyMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513 }); // Brown
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 0.35;
+            body.scale.y = 0.7; // Flatten it to look like a mushroom
+            goombaGroup.add(body);
+            
+            // Goomba feet
+            const footGeometry = new THREE.BoxGeometry(0.4, 0.3, 0.4);
+            const footMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 }); // Black
+            
+            const leftFoot = new THREE.Mesh(footGeometry, footMaterial);
+            leftFoot.position.set(-0.3, -0.15, 0);
+            goombaGroup.add(leftFoot);
+            
+            const rightFoot = new THREE.Mesh(footGeometry, footMaterial);
+            rightFoot.position.set(0.3, -0.15, 0);
+            goombaGroup.add(rightFoot);
+            
+            // Position the goomba
+            goombaGroup.position.set(x, y, 0);
+            scene.add(goombaGroup);
+            
+            // Add properties for movement and collision
+            goombaGroup.userData = {
+                isGoomba: true,
+                velocity: new THREE.Vector3(-0.05, 0, 0), // Initial velocity (moving left)
+                isDead: false,
+                deadTime: 0
+            };
+            
+            goombas.push(goombaGroup);
+            return goombaGroup;
+        }
+        
+        // Create a fire flower power-up
+        function createFireFlower(x, y) {
+            const flowerGroup = new THREE.Group();
+            
+            // Stem
+            const stemGeometry = new THREE.CylinderGeometry(0.2, 0.2, 0.8, 8);
+            const stemMaterial = new THREE.MeshPhongMaterial({ color: 0x00FF00 }); // Green
+            const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+            stem.position.y = -0.35;
+            flowerGroup.add(stem);
+            
+            // Flower center
+            const centerGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+            const centerMaterial = new THREE.MeshPhongMaterial({ color: 0xFFFFFF }); // White
+            const center = new THREE.Mesh(centerGeometry, centerMaterial);
+            flowerGroup.add(center);
+            
+            // Flower petals (6 petals arranged in a circle)
+            const petalGeometry = new THREE.SphereGeometry(0.4, 16, 16);
+            const petalMaterial = new THREE.MeshPhongMaterial({ color: 0xFF4500 }); // Orange-red
+            
+            for (let i = 0; i < 6; i++) {
+                const angle = (i / 6) * Math.PI * 2;
+                const petal = new THREE.Mesh(petalGeometry, petalMaterial);
+                petal.position.set(Math.sin(angle) * 0.6, 0.1, Math.cos(angle) * 0.6);
+                petal.scale.set(0.8, 0.8, 0.8);
+                flowerGroup.add(petal);
+            }
+            
+            // Make the overall flower bigger
+            flowerGroup.scale.set(1.5, 1.5, 1.5);
+            
+            // Position the fire flower
+            flowerGroup.position.set(x, y, 0);
+            flowerGroup.userData = {
+                isFireFlower: true,
+                collected: false,
+                velocity: new THREE.Vector3(0, 0, 0),
+                collisionRadius: 1.2 // Larger collision radius for easier collection
+            };
+            
+            scene.add(flowerGroup);
+            flowers.push(flowerGroup); // Add to flowers array
+            return flowerGroup;
+        }
+        
+        // Create a fireball
+        function createFireball() {
+            if (!character || !characterHasFirePower) return;
+            
+            const fireballGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+            const fireballMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xFF4500,
+                emissive: 0xFF0000,
+                emissiveIntensity: 0.5
+            });
+            const fireball = new THREE.Mesh(fireballGeometry, fireballMaterial);
+            
+            // Position the fireball at the character's position
+            fireball.position.copy(character.position);
+            fireball.position.y += 1; // Raise it a bit
+            
+            // Set velocity in direction character is facing
+            const direction = character.rotation.y > 0 ? -1 : 1; // Check which way character is facing
+            fireball.userData = {
+                isFireball: true,
+                velocity: new THREE.Vector3(direction * 0.5, 0.2, 0), // Add a slight upward trajectory
+                bounceCount: 0,
+                maxBounces: 3 // Disappear after 3 bounces
+            };
+            
+            scene.add(fireball);
+            fireballs.push(fireball);
+            
+            // Play fire sound
+            if (window.gameAudioContext) {
+                try {
+                    const oscillator = window.gameAudioContext.createOscillator();
+                    const gainNode = window.gameAudioContext.createGain();
+                    
+                    oscillator.type = 'square';
+                    oscillator.frequency.setValueAtTime(550, window.gameAudioContext.currentTime);
+                    oscillator.connect(gainNode);
+                    gainNode.connect(window.gameAudioContext.destination);
+                    
+                    gainNode.gain.setValueAtTime(0.1, window.gameAudioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(220, window.gameAudioContext.currentTime + 0.2);
+                    oscillator.start();
+                    oscillator.stop(window.gameAudioContext.currentTime + 0.2);
+                } catch(e) {
+                    console.log('Fire sound error:', e);
+                }
+            }
+            
+            return fireball;
+        }
+        
+        // Update goombas
+        function updateGoombas(delta) {
+            if (isGameOver) return;
+            
+            for (let i = 0; i < goombas.length; i++) {
+                const goomba = goombas[i];
+                
+                if (goomba.userData.isDead) {
+                    // Handle dead goomba animation
+                    goomba.userData.deadTime += delta;
+                    goomba.scale.y = Math.max(0.1, 1 - goomba.userData.deadTime * 2);
+                    
+                    // Remove after animation completes
+                    if (goomba.userData.deadTime > 0.5) {
+                        scene.remove(goomba);
+                        goombas.splice(i, 1);
+                        i--;
+                    }
+                    continue;
+                }
+                
+                // Apply gravity
+                goomba.userData.velocity.y -= worldGravity;
+                
+                // Apply velocity
+                goomba.position.x += goomba.userData.velocity.x;
+                goomba.position.y += goomba.userData.velocity.y;
+                
+                // Check world bounds and change direction
+                const halfLevelWidth = levelWidth / 2;
+                if (goomba.position.x < -halfLevelWidth || goomba.position.x > halfLevelWidth) {
+                    goomba.userData.velocity.x *= -1; // Reverse direction at world edge
+                }
+                
+                // Remove if fallen off the level
+                if (goomba.position.y < -10) {
+                    scene.remove(goomba);
+                    goombas.splice(i, 1);
+                    i--;
+                    continue;
+                }
+                
+                // Check platform collisions
+                let onGround = false;
+                for (const platform of platforms) {
+                    if (checkCollision(goomba, platform)) {
+                        handleGoombaCollision(goomba, platform);
+                        onGround = true;
+                    }
+                }
+                
+                // Check character collision
+                if (!goomba.userData.isDead && character && !character.userData.invincible && checkCollision(character, goomba)) {
+                    // Check if character is above goomba (jumping on it)
+                    if (character.position.y > goomba.position.y + 0.5 && character.userData.velocity.y < 0) {
+                        // Kill goomba when jumped on
+                        goomba.userData.isDead = true;
+                        character.userData.velocity.y = 0.5; // Small bounce
+                        score += 100;
+                        document.getElementById('score-text').textContent = score;
+                        
+                        // Play stomp sound
+                        if (window.gameAudioContext) {
+                            try {
+                                const oscillator = window.gameAudioContext.createOscillator();
+                                const gainNode = window.gameAudioContext.createGain();
+                                
+                                oscillator.type = 'square';
+                                oscillator.frequency.setValueAtTime(150, window.gameAudioContext.currentTime);
+                                oscillator.connect(gainNode);
+                                gainNode.connect(window.gameAudioContext.destination);
+                                
+                                gainNode.gain.setValueAtTime(0.2, window.gameAudioContext.currentTime);
+                                oscillator.start();
+                                oscillator.stop(window.gameAudioContext.currentTime + 0.15);
+                            } catch(e) {
+                                console.log('Stomp sound error:', e);
+                            }
+                        }
+                    } else if (!characterIsBig) {
+                        // Character loses a life if not big
+                        loseLife();
+                    } else {
+                        // If big, lose big status but don't die
+                        character.scale.set(1, 1, 1);
+                        characterIsBig = false;
+                        character.userData.width = 1.0;
+                        character.userData.height = 2.6;
+                        character.userData.depth = 0.7;
+                        
+                        // Add invincibility frames
+                        character.userData.invincible = true;
+                        // Flash effect for invincibility
+                        let flashCount = 0;
+                        const flashInterval = setInterval(() => {
+                            if (character) {
+                                character.visible = !character.visible;
+                                flashCount++;
+                                if (flashCount > 10) {
+                                    clearInterval(flashInterval);
+                                    if (character) {
+                                        character.visible = true;
+                                        character.userData.invincible = false;
+                                    }
+                                }
+                            } else {
+                                clearInterval(flashInterval);
+                            }
+                        }, 150);
+                    }
+                }
+                
+                // Make goombas change direction when hitting walls
+                for (const platform of platforms) {
+                    if (platform === goomba) continue; // Skip self
+                    
+                    // Calculate horizontal distance
+                    const dx = Math.abs(goomba.position.x - platform.position.x);
+                    const combinedWidth = 0.7 + (platform.geometry ? platform.geometry.parameters.width / 2 : 0.75);
+                    
+                    // If close to a platform horizontally and at similar height, change direction
+                    if (dx < combinedWidth && 
+                        Math.abs(goomba.position.y - platform.position.y) < 1.5 &&
+                        goomba.position.y >= platform.position.y) {
+                        goomba.userData.velocity.x *= -1; // Change direction
+                        
+                        // Move slightly away to prevent getting stuck
+                        goomba.position.x += goomba.userData.velocity.x * 2;
+                        break;
+                    }
+                }
+                
+                // Animate goomba walking
+                goomba.children[1].position.y = -0.15 + Math.sin(Date.now() * 0.01) * 0.1;
+                goomba.children[2].position.y = -0.15 + Math.sin(Date.now() * 0.01 + Math.PI) * 0.1;
+            }
+        }
+        
+        // Update fireballs
+        function updateFireballs(delta) {
+            for (let i = 0; i < fireballs.length; i++) {
+                const fireball = fireballs[i];
+                
+                // Apply gravity
+                fireball.userData.velocity.y -= worldGravity * 0.5;
+                
+                // Apply velocity
+                fireball.position.x += fireball.userData.velocity.x;
+                fireball.position.y += fireball.userData.velocity.y;
+                
+                // Rotate fireball as it moves
+                fireball.rotation.z += 0.2;
+                fireball.rotation.x += 0.2;
+                
+                // Check world bounds
+                const halfLevelWidth = levelWidth / 2;
+                if (fireball.position.x < -halfLevelWidth || fireball.position.x > halfLevelWidth || fireball.position.y < -10) {
+                    // Remove if out of bounds
+                    scene.remove(fireball);
+                    fireballs.splice(i, 1);
+                    i--;
+                    continue;
+                }
+                
+                // Check platform collisions for bounce
+                for (const platform of platforms) {
+                    if (checkSimpleCollision(fireball, platform)) {
+                        // Bounce off platforms
+                        if (fireball.position.y > platform.position.y) {
+                            // Bounce up if hitting from above
+                            fireball.userData.velocity.y = 0.3;
+                            fireball.userData.bounceCount++;
+                        } else {
+                            // Bounce in opposite direction if hitting from sides
+                            fireball.userData.velocity.x *= -1;
+                        }
+                        
+                        // Remove after max bounces
+                        if (fireball.userData.bounceCount >= fireball.userData.maxBounces) {
+                            scene.remove(fireball);
+                            fireballs.splice(i, 1);
+                            i--;
+                            break;
+                        }
+                    }
+                }
+                
+                // Check enemy collisions
+                for (let j = 0; j < goombas.length; j++) {
+                    const goomba = goombas[j];
+                    
+                    if (!goomba.userData.isDead && checkSimpleCollision(fireball, goomba)) {
+                        // Kill goomba
+                        goomba.userData.isDead = true;
+                        
+                        // Create small explosion effect
+                        const explosion = new THREE.Mesh(
+                            new THREE.SphereGeometry(0.5, 8, 8),
+                            new THREE.MeshBasicMaterial({ color: 0xFF8C00, transparent: true, opacity: 0.8 })
+                        );
+                        explosion.position.copy(goomba.position);
+                        scene.add(explosion);
+                        
+                        // Animate explosion then remove it
+                        setTimeout(() => {
+                            scene.remove(explosion);
+                        }, 300);
+                        
+                        // Remove fireball
+                        scene.remove(fireball);
+                        fireballs.splice(i, 1);
+                        i--;
+                        
+                        // Add score
+                        score += 200;
+                        document.getElementById('score-text').textContent = score;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Handle goomba collision with platform
+        function handleGoombaCollision(goomba, platform) {
+            // Simple AABB collision response
+            const goombaHalfWidth = 0.7;
+            const goombaHalfHeight = 0.5;
+            
+            // Get platform dimensions
+            let platformWidth, platformHeight;
+            if (platform.geometry instanceof THREE.BoxGeometry) {
+                platformWidth = platform.geometry.parameters.width * platform.scale.x;
+                platformHeight = platform.geometry.parameters.height * platform.scale.y;
+            } else {
+                platformWidth = 1.5;
+                platformHeight = 1.5;
+            }
+            
+            const platformHalfWidth = platformWidth / 2;
+            const platformHalfHeight = platformHeight / 2;
+            
+            const xPenetration = (goombaHalfWidth + platformHalfWidth) - 
+                                Math.abs(goomba.position.x - platform.position.x);
+            const yPenetration = (goombaHalfHeight + platformHalfHeight) - 
+                                Math.abs(goomba.position.y - platform.position.y);
+            
+            if (yPenetration < xPenetration) {
+                // Resolve along Y-axis
+                if (goomba.position.y > platform.position.y) {
+                    // Goomba is above platform
+                    goomba.position.y = platform.position.y + platformHalfHeight + goombaHalfHeight;
+                    goomba.userData.velocity.y = 0;
+                } else {
+                    // Goomba is below platform - hitting ceiling
+                    goomba.position.y = platform.position.y - platformHalfHeight - goombaHalfHeight;
+                    goomba.userData.velocity.y = 0;
+                }
+            } else {
+                // Resolve along X-axis by changing direction
+                goomba.userData.velocity.x *= -1;
+            }
+        }
+        
+        // Simple collision check for fireballs and enemies
+        function checkSimpleCollision(obj1, obj2) {
+            const radius1 = obj1.geometry instanceof THREE.SphereGeometry ? obj1.geometry.parameters.radius : 0.5;
+            const radius2 = 0.7; // Standard collision radius for enemies
+            
+            const distance = obj1.position.distanceTo(obj2.position);
+            return distance < radius1 + radius2;
+        }
+        
+        // Populate the level with goombas
+        function addGoombas() {
+            // Add goombas at various locations on platforms
+            createGoomba(10, 5);  // On first platform to the right
+            createGoomba(20, 6);  // On another platform
+            createGoomba(-15, 5); // On platform to the left
+            createGoomba(35, 8);  // Further to the right
+            createGoomba(-30, 6); // Further to the left
+            createGoomba(50, 9);  // Far right
+            createGoomba(-50, 7); // Far left
+            
+            // Add more goombas in new expanded areas
+            createGoomba(65, 11);
+            createGoomba(80, 12);
+            createGoomba(-65, 10);
+            createGoomba(-80, 11);
+        }
+        
         // Handle hitting a question block
         function hitQuestionBlock(block) {
             if (block.userData.hit) return; // Block already hit
@@ -1387,9 +2216,12 @@
             block.userData.hit = true;
             
             // Play hit block sound
-            if (hitBlockSound && hitBlockSound.readyState >= 2) {
-                hitBlockSound.currentTime = 0;
-                hitBlockSound.play();
+            if (window.gameAudioContext && window.playHitBlockSound) {
+                try {
+                    window.playHitBlockSound();
+                } catch(e) {
+                    console.log('Hit block sound error:', e);
+                }
             }
             
             // Apply a "bump" animation to the block
@@ -1408,17 +2240,493 @@
                 setTimeout(() => {
                     block.position.y = originalY;
                     
-                    // If block contains mushroom, spawn it
-                    if (block.userData.containsMushroom) {
+                    // Spawn item based on type
+                    if (block.userData.containsItem === 'mushroom') {
+                        // Spawn mushroom
                         const mushroomX = block.position.x;
                         const mushroomY = block.position.y + 2; // Spawn above the block
                         createMushroom(mushroomX, mushroomY);
-                        block.userData.containsMushroom = false;
+                    } else if (block.userData.containsItem === 'fireflower') {
+                        // Spawn fire flower
+                        const flowerX = block.position.x;
+                        const flowerY = block.position.y + 2; // Spawn above the block
+                        createFireFlower(flowerX, flowerY);
                     }
+                    
+                    block.userData.containsItem = null; // Block is now empty
                 }, 100);
             };
             
             bumpUp();
+        }
+
+        // Update fire flowers
+        function updateFireFlowers(delta) {
+            for (let i = 0; i < flowers.length; i++) {
+                const flower = flowers[i];
+                
+                if (flower.userData.collected) continue;
+                
+                // Apply gravity (simplified, fire flowers don't move much)
+                flower.userData.velocity.y -= worldGravity * 0.5;
+                
+                // Apply velocity
+                flower.position.y += flower.userData.velocity.y;
+                
+                // Check for falling off the level
+                if (flower.position.y < -10) {
+                    // Remove the flower from the scene and array
+                    scene.remove(flower);
+                    flowers.splice(i, 1);
+                    i--;
+                    continue;
+                }
+                
+                // Check platform collisions for flowers
+                for (const platform of platforms) {
+                    if (checkSimpleCollision(flower, platform)) {
+                        // Stop falling when hits a platform
+                        if (flower.position.y > platform.position.y) {
+                            flower.position.y = platform.position.y + 1.5; // Higher position
+                            flower.userData.velocity.y = 0;
+                        }
+                    }
+                }
+                
+                // Check character collision with improved sensitivity
+                if (!flower.userData.collected && checkFireFlowerCollision(flower, character)) {
+                    collectFireFlower(flower);
+                }
+                
+                // Make flower bob up and down slightly and rotate
+                flower.position.y += Math.sin(Date.now() * 0.003) * 0.008;
+                flower.rotation.y += delta * 0.5; // Slow rotation
+            }
+        }
+
+        // Improved collision detection for fire flowers
+        function checkFireFlowerCollision(flower, obj) {
+            // Use a larger collision radius for easier collection
+            const flowerRadius = flower.userData.collisionRadius || 1.2;
+            const objRadius = obj.userData.width ? Math.max(obj.userData.width, obj.userData.depth) : 1.0;
+            
+            // Calculate horizontal distance only (easier to collect)
+            const dx = Math.abs(flower.position.x - obj.position.x);
+            const dy = Math.abs(flower.position.y - obj.position.y);
+            
+            // More lenient collision - either close horizontally or vertically
+            return (dx < flowerRadius + objRadius * 0.8) && (dy < flowerRadius + objRadius);
+        }
+
+        // Collect fire flower
+        function collectFireFlower(fireFlower) {
+            // Grant fire power
+            characterHasFirePower = true;
+            
+            // Change character color to indicate fire power
+            if (character.children[0].material && character.children[0].material.color) {
+                character.children[0].material.color.set(0xFFFFFF); // White body
+            }
+            
+            if (character.children[2] && character.children[2].material && character.children[2].material.color) {
+                character.children[2].material.color.set(0xFF0000); // Red pants
+            }
+            
+            if (character.children[3] && character.children[3].material && character.children[3].material.color) {
+                character.children[3].material.color.set(0xFF0000); // Red pants
+            }
+            
+            // Mark fire flower as collected and remove it
+            fireFlower.userData.collected = true;
+            fireFlower.visible = false;
+            
+            // Play power-up sound
+            if (window.gameAudioContext) {
+                try {
+                    const oscillator = window.gameAudioContext.createOscillator();
+                    const gainNode = window.gameAudioContext.createGain();
+                    
+                    oscillator.type = 'square';
+                    oscillator.frequency.setValueAtTime(440, window.gameAudioContext.currentTime);
+                    oscillator.connect(gainNode);
+                    gainNode.connect(window.gameAudioContext.destination);
+                    
+                    gainNode.gain.setValueAtTime(0.1, window.gameAudioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(880, window.gameAudioContext.currentTime + 0.5);
+                    oscillator.start();
+                    oscillator.stop(window.gameAudioContext.currentTime + 0.5);
+                } catch(e) {
+                    console.log('Fire flower sound error:', e);
+                }
+            }
+            
+            // Add points
+            score += 100;
+            document.getElementById('score-text').textContent = score;
+        }
+
+        // Function to reset character without stopping music
+        function resetCharacter() {
+            // Reset position
+            character.position.set(0, 5, 0);
+            character.userData.velocity.set(0, 0, 0);
+            
+            // Remove any power-ups
+            if (characterIsBig) {
+                character.scale.set(1, 1, 1);
+                characterIsBig = false;
+                character.userData.width = 1.0;
+                character.userData.height = 2.6;
+                character.userData.depth = 0.7;
+            }
+            
+            // Remove fire power
+            characterHasFirePower = false;
+            
+            // Reset character color
+            if (character.children[0] && character.children[0].material && character.children[0].material.color) {
+                character.children[0].material.color.set(0xFF0000); // Red body
+            }
+            
+            if (character.children[2] && character.children[2].material && character.children[2].material.color) {
+                character.children[2].material.color.set(0x0000FF); // Blue pants
+            }
+            
+            if (character.children[3] && character.children[3].material && character.children[3].material.color) {
+                character.children[3].material.color.set(0x0000FF); // Blue pants
+            }
+            
+            // Add invincibility
+            character.userData.invincible = true;
+            setTimeout(() => {
+                if (character) character.userData.invincible = false;
+            }, 3000);
+        }
+
+        // Check if hitting question block from below - improved detection for high positioned blocks
+        function checkBlockHitFromBelow(character, block) {
+            // Get character dimensions
+            const charHeight = character.userData.height || 2.6;
+            const charHalfHeight = charHeight / 2;
+            
+            // Get block dimensions
+            const blockHeight = block.geometry.parameters.height;
+            const blockHalfHeight = blockHeight / 2;
+            
+            // Calculate vertical distance between character top and block bottom
+            const characterTop = character.position.y + charHalfHeight;
+            const blockBottom = block.position.y - blockHalfHeight;
+            
+            // Calculate horizontal distance between character and block
+            const dx = Math.abs(character.position.x - block.position.x);
+            const blockWidth = block.geometry.parameters.width;
+            
+            // Modified check: since blocks are very high, we need more flexible detection
+            // Just check if character is below block, moving upward and horizontally aligned
+            return (
+                character.position.y < block.position.y && // Character is below block
+                character.userData.velocity.y > 0 && // Character is moving upward
+                dx < blockWidth / 2 + 0.8 && // Horizontally aligned (with larger margin)
+                Math.abs(character.position.y - block.position.y) < 20 // Increase vertical detection range dramatically
+            );
+        }
+
+        // Handle losing a life
+        function loseLife() {
+            lives--;
+            updateLivesDisplay();
+            
+            if (lives <= 0) {
+                gameOver();
+            } else {
+                resetCharacter();
+            }
+        }
+
+        // Update lives display
+        function updateLivesDisplay() {
+            const livesText = document.getElementById('lives-text');
+            if (livesText) {
+                livesText.textContent = lives;
+            } else {
+                // If lives display doesn't exist yet, create it
+                setupGameUI();
+            }
+        }
+
+        // Game over function
+        function gameOver() {
+            isGameOver = true;
+            
+            // Stop background music if playing
+            if (backgroundMusic && !backgroundMusic.paused) {
+                backgroundMusic.pause();
+            }
+            
+            // Play game over music
+            playGameOverMusic();
+            
+            // Display game over message
+            const gameOverElement = document.getElementById('game-over');
+            if (gameOverElement) {
+                gameOverElement.style.display = 'flex';
+            } else {
+                // Create game over overlay if it doesn't exist
+                const gameOverDiv = document.createElement('div');
+                gameOverDiv.id = 'game-over';
+                gameOverDiv.style.position = 'absolute';
+                gameOverDiv.style.top = '0';
+                gameOverDiv.style.left = '0';
+                gameOverDiv.style.width = '100%';
+                gameOverDiv.style.height = '100%';
+                gameOverDiv.style.display = 'flex';
+                gameOverDiv.style.flexDirection = 'column';
+                gameOverDiv.style.justifyContent = 'center';
+                gameOverDiv.style.alignItems = 'center';
+                gameOverDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+                gameOverDiv.style.color = 'white';
+                gameOverDiv.style.fontSize = '3em';
+                gameOverDiv.style.fontFamily = 'Arial, sans-serif';
+                gameOverDiv.style.zIndex = '1000';
+                
+                const gameOverText = document.createElement('div');
+                gameOverText.textContent = 'GAME OVER';
+                gameOverText.style.marginBottom = '20px';
+                
+                const restartButton = document.createElement('button');
+                restartButton.textContent = 'Restart';
+                restartButton.style.padding = '10px 20px';
+                restartButton.style.fontSize = '0.5em';
+                restartButton.style.cursor = 'pointer';
+                restartButton.onclick = restartGame;
+                
+                gameOverDiv.appendChild(gameOverText);
+                gameOverDiv.appendChild(restartButton);
+                document.body.appendChild(gameOverDiv);
+            }
+        }
+
+        // Play game over music
+        function playGameOverMusic() {
+            if (window.gameAudioContext) {
+                try {
+                    const oscillator1 = window.gameAudioContext.createOscillator();
+                    const oscillator2 = window.gameAudioContext.createOscillator();
+                    const gainNode = window.gameAudioContext.createGain();
+                    
+                    oscillator1.type = 'square';
+                    oscillator2.type = 'square';
+                    
+                    oscillator1.connect(gainNode);
+                    oscillator2.connect(gainNode);
+                    gainNode.connect(window.gameAudioContext.destination);
+                    
+                    gainNode.gain.setValueAtTime(0.2, window.gameAudioContext.currentTime);
+                    
+                    // First part of game over tune
+                    oscillator1.frequency.setValueAtTime(415.30, window.gameAudioContext.currentTime);
+                    oscillator2.frequency.setValueAtTime(220.00, window.gameAudioContext.currentTime);
+                    
+                    oscillator1.start(window.gameAudioContext.currentTime);
+                    oscillator2.start(window.gameAudioContext.currentTime);
+                    
+                    // Second note
+                    oscillator1.frequency.setValueAtTime(369.99, window.gameAudioContext.currentTime + 0.3);
+                    oscillator2.frequency.setValueAtTime(195.99, window.gameAudioContext.currentTime + 0.3);
+                    
+                    // Third note
+                    oscillator1.frequency.setValueAtTime(329.63, window.gameAudioContext.currentTime + 0.6);
+                    oscillator2.frequency.setValueAtTime(174.61, window.gameAudioContext.currentTime + 0.6);
+                    
+                    // Final note (descending)
+                    oscillator1.frequency.setValueAtTime(277.18, window.gameAudioContext.currentTime + 0.9);
+                    oscillator2.frequency.setValueAtTime(146.83, window.gameAudioContext.currentTime + 0.9);
+                    
+                    // Fade out and stop
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, window.gameAudioContext.currentTime + 2.5);
+                    oscillator1.stop(window.gameAudioContext.currentTime + 2.5);
+                    oscillator2.stop(window.gameAudioContext.currentTime + 2.5);
+                } catch(e) {
+                    console.log('Game over music error:', e);
+                }
+            }
+        }
+
+        // Restart game function
+        function restartGame() {
+            // Reset game state
+            lives = 3;
+            score = 0;
+            isGameOver = false;
+            
+            // Hide game over screen
+            const gameOverElement = document.getElementById('game-over');
+            if (gameOverElement) {
+                gameOverElement.style.display = 'none';
+            }
+            
+            // Update score and lives display
+            document.getElementById('score-text').textContent = score;
+            updateLivesDisplay();
+            
+            // Reset character
+            resetCharacter();
+            
+            // Restart background music
+            if (backgroundMusic) {
+                backgroundMusic.currentTime = 0;
+                backgroundMusic.play();
+            }
+            
+            // Remove all goombas
+            while (goombas.length > 0) {
+                const goomba = goombas.pop();
+                scene.remove(goomba);
+            }
+            
+            // Remove all mushrooms
+            while (mushrooms.length > 0) {
+                const mushroom = mushrooms.pop();
+                scene.remove(mushroom);
+            }
+            
+            // Remove all fireballs
+            while (fireballs.length > 0) {
+                const fireball = fireballs.pop();
+                scene.remove(fireball);
+            }
+            
+            // Remove all flowers
+            while (flowers.length > 0) {
+                const flower = flowers.pop();
+                scene.remove(flower);
+            }
+            
+            // Reset coins
+            coins.forEach(coin => {
+                coin.userData.collected = false;
+                coin.visible = true;
+            });
+            
+            // Reset question blocks
+            platforms.forEach(platform => {
+                if (platform.userData && platform.userData.isQuestionBlock) {
+                    platform.userData.hit = false;
+                    platform.material.forEach(mat => {
+                        mat.color.set(0xFFD700); // Reset to gold color
+                    });
+                    
+                    // Reset question mark texture on front face
+                    if (platform.material[4]) {
+                        platform.material[4].map = createQuestionMarkTexture();
+                    }
+                    
+                    // Randomly assign new item
+                    platform.userData.containsItem = Math.random() < 0.7 ? 'mushroom' : 'fireflower';
+                }
+            });
+            
+            // Respawn goombas
+            addGoombas();
+        }
+
+        // Setup the game UI after everything is loaded
+        function setupGameUI() {
+            // Setup score display
+            const scoreDisplay = document.createElement('div');
+            scoreDisplay.id = 'score-display';
+            scoreDisplay.style.position = 'absolute';
+            scoreDisplay.style.top = '10px';
+            scoreDisplay.style.left = '10px';
+            scoreDisplay.style.color = 'white';
+            scoreDisplay.style.fontSize = '20px';
+            scoreDisplay.style.fontFamily = 'Arial, sans-serif';
+            scoreDisplay.style.textShadow = '2px 2px 4px #000';
+            scoreDisplay.innerHTML = 'Score: <span id="score-text">0</span>';
+            document.body.appendChild(scoreDisplay);
+            
+            // Setup lives display
+            const livesDisplay = document.createElement('div');
+            livesDisplay.id = 'lives-display';
+            livesDisplay.style.position = 'absolute';
+            livesDisplay.style.top = '10px';
+            livesDisplay.style.right = '10px';
+            livesDisplay.style.color = 'white';
+            livesDisplay.style.fontSize = '20px';
+            livesDisplay.style.fontFamily = 'Arial, sans-serif';
+            livesDisplay.style.textShadow = '2px 2px 4px #000';
+            livesDisplay.innerHTML = 'Lives: <span id="lives-text">3</span>';
+            document.body.appendChild(livesDisplay);
+        }
+
+        // Create background music with loop functionality
+        function createBackgroundMusic() {
+            // Using Web Audio API for the background music
+            if (window.gameAudioContext) {
+                // The music is already created with loop functionality in the initAudio function
+                // We just need to make sure it's automatically started
+                if (window.playBackgroundMusic) {
+                    // Start the music if not already playing
+                    if (!window.isMusicPlaying) {
+                        window.playBackgroundMusic();
+                        
+                        // Update music button visually if it exists
+                        // Using standard querySelector to find the button
+                        const buttons = document.querySelectorAll('button');
+                        for (let i = 0; i < buttons.length; i++) {
+                            if (buttons[i].innerText.includes('Music:')) {
+                                buttons[i].innerText = 'Music: ON';
+                                buttons[i].style.backgroundColor = '#2ecc71';
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Update game initialization to ensure the UI is properly displayed
+        function init() {
+            return new Promise((resolve) => {
+                // First, setup WebGL context for sounds
+                setupAudioContext();
+                
+                // Show preload image
+                const preloadImage = document.getElementById('preload-image');
+                if (preloadImage) {
+                    preloadImage.style.display = 'flex';
+                }
+                
+                // Initialize the character and level
+                initGame()
+                    .then(() => createCharacter())
+                    .then(() => createLevel())
+                    .then(() => {
+                        // Hide the loading overlay
+                        document.getElementById('loading-overlay').style.display = 'none';
+                        
+                        // Hide preload image
+                        if (preloadImage) {
+                            preloadImage.style.display = 'none';
+                        }
+                        
+                        // Setup game UI - must be called BEFORE starting background music
+                        setupGameUI();
+                        
+                        // Start animation
+                        animate();
+                        
+                        // Create and start background music
+                        createBackgroundMusic();
+                        
+                        gameStarted = true;
+                        resolve();
+                    })
+                    .catch(error => {
+                        console.error('Error initializing game:', error);
+                        resolve();
+                    });
+            });
         }
     </script>
 </body>
