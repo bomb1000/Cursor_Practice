@@ -7,12 +7,21 @@ let keyBuffer = "";
 let keyDebounceTimer = null;
 
 // Initialize on load
-chrome.storage.sync.get(['isEnabled', 'writingStyle'], (result) => {
-  isExtensionEnabled = typeof result.isEnabled === 'undefined' ? true : result.isEnabled;
-  if (isExtensionEnabled) {
-    initializeUI();
-  }
-});
+if (chrome.runtime?.id) {
+  chrome.storage.sync.get(['isEnabled', 'writingStyle'], (result) => {
+    isExtensionEnabled = typeof result.isEnabled === 'undefined' ? true : result.isEnabled;
+    // The writingStyle is implicitly handled by triggerTranslation if not set here
+    if (isExtensionEnabled) {
+      initializeUI();
+    }
+  });
+} else {
+  console.log("EW: Context invalidated during initial setup. Extension may not load correctly.");
+  // isExtensionEnabled will remain its default (true or what it was before)
+  // or could be explicitly set to false here:
+  // isExtensionEnabled = false; 
+  // For now, just log, as default behavior might be okay if context is briefly unavailable.
+}
 
 // Listen for messages from popup or background
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -154,23 +163,64 @@ function triggerTranslation(text) {
 
   if (sidebarContent) sidebarContent.textContent = '翻譯中...';
 
-  chrome.storage.sync.get(['writingStyle'], (settings) => {
-    chrome.runtime.sendMessage({ type: 'TRANSLATE_TEXT', text: text, style: settings.writingStyle }, (response) => {
-      if (chrome.runtime.lastError) {
-        console.error("Error sending message:", chrome.runtime.lastError.message);
-        if (sidebarContent) sidebarContent.textContent = `錯誤: ${chrome.runtime.lastError.message}`;
+  if (chrome.runtime?.id) {
+    chrome.storage.sync.get(['writingStyle'], (settings) => {
+      if (chrome.runtime.lastError) { // Check for errors during storage.get itself
+        console.error("EW: Error getting writingStyle:", chrome.runtime.lastError.message);
+        if (sidebarContent) sidebarContent.textContent = '錯誤: 無法讀取風格設定。';
+        const copyButton = document.getElementById('ew-copy-button');
+        if (copyButton) copyButton.style.display = 'none';
         return;
       }
-      if (response && response.translatedText) {
-        if (sidebarContent) sidebarContent.textContent = response.translatedText;
-      } else if (response && response.error) {
-        console.error('Translation API error:', response.error);
-        if (sidebarContent) sidebarContent.textContent = `翻譯錯誤: ${response.error}`;
+
+      // Now, check context *before* sendMessage
+      if (chrome.runtime?.id) {
+        chrome.runtime.sendMessage({ type: 'TRANSLATE_TEXT', text: text, style: settings.writingStyle }, (response) => {
+          const currentCopyButton = document.getElementById('ew-copy-button'); // Re-fetch button
+          if (chrome.runtime.lastError) {
+            console.error("Error sending message:", chrome.runtime.lastError.message);
+            if (sidebarContent) sidebarContent.textContent = `錯誤: ${chrome.runtime.lastError.message}`;
+            if (currentCopyButton) currentCopyButton.style.display = 'none';
+            return;
+          }
+          
+          if (response && response.translatedText) {
+            if (sidebarContent) sidebarContent.textContent = response.translatedText;
+          } else if (response && response.error) {
+            console.error('Translation API error:', response.error);
+            if (sidebarContent) sidebarContent.textContent = `翻譯錯誤: ${response.error}`;
+          } else {
+            if (sidebarContent) sidebarContent.textContent = '無翻譯結果';
+          }
+
+          // Update copy button visibility based on the final state of sidebarContent
+          if (currentCopyButton) {
+            if (sidebarContent && sidebarContent.textContent && 
+                !sidebarContent.textContent.startsWith('錯誤:') && 
+                !sidebarContent.textContent.startsWith('翻譯中...') &&
+                !sidebarContent.textContent.startsWith('輸入中:') &&
+                sidebarContent.textContent !== '...' &&
+                sidebarContent.textContent !== '無翻譯結果') {
+              currentCopyButton.style.display = 'block';
+            } else {
+              currentCopyButton.style.display = 'none';
+            }
+          }
+        });
       } else {
-        if (sidebarContent) sidebarContent.textContent = '無翻譯結果';
+        console.log("EW: Context invalidated, cannot send translation request.");
+        if (sidebarContent) sidebarContent.textContent = '錯誤: 擴充功能連線已中斷，請嘗試刷新頁面。';
+        const copyButton = document.getElementById('ew-copy-button');
+        if (copyButton) copyButton.style.display = 'none';
       }
     });
-  });
+  } else {
+    // This outer else handles the case where chrome.runtime.id was null before even trying storage.get
+    console.log("EW: Context invalidated, cannot fetch writing style for translation (outer check).");
+    if (sidebarContent) sidebarContent.textContent = '錯誤: 擴充功能內部錯誤 (無法讀取設定)';
+    const copyButton = document.getElementById('ew-copy-button');
+    if (copyButton) copyButton.style.display = 'none';
+  }
 }
 
 // Create and manage the sidebar
@@ -189,7 +239,11 @@ function createSidebar() {
     sidebar.classList.toggle('ew-sidebar-collapsed');
     sidebarToggle.textContent = sidebar.classList.contains('ew-sidebar-collapsed') ? '>' : '<';
     // Store sidebar state
-    chrome.storage.local.set({ sidebarCollapsed: sidebar.classList.contains('ew-sidebar-collapsed') });
+    if (chrome.runtime?.id) {
+      chrome.storage.local.set({ sidebarCollapsed: sidebar.classList.contains('ew-sidebar-collapsed') });
+    } else {
+      console.log("EW: Context invalidated, cannot save sidebar state.");
+    }
   });
 
   sidebarContent = document.createElement('div');
@@ -228,15 +282,124 @@ function createSidebar() {
   document.body.appendChild(sidebar);
 
   // Restore sidebar state
-  chrome.storage.local.get('sidebarCollapsed', (result) => {
-    if (result.sidebarCollapsed === false) { // Check for explicitly false
-        sidebar.classList.remove('ew-sidebar-collapsed');
-        sidebarToggle.textContent = '<';
+  if (chrome.runtime?.id) {
+    chrome.storage.local.get('sidebarCollapsed', (result) => {
+      if (chrome.runtime.lastError) { // Check for errors during storage.get
+        console.error("EW: Error restoring sidebar state:", chrome.runtime.lastError.message);
+        return;
+      }
+      if (result.sidebarCollapsed === false) { // Check for explicitly false
+          sidebar.classList.remove('ew-sidebar-collapsed');
+          sidebarToggle.textContent = '<';
+      } else {
+          sidebar.classList.add('ew-sidebar-collapsed');
+          sidebarToggle.textContent = '>';
+      }
+    });
+  } else {
+    console.log("EW: Context invalidated, cannot restore sidebar state.");
+  }
+}
+
+// Ensure UI is initialized when the script loads if enabled
+if (isExtensionEnabled) {
+  if (document.readyState === "complete" || document.readyState === "interactive") {
+    initializeUI();
+  } else {
+    document.addEventListener("DOMContentLoaded", initializeUI);
+  }
+}
+      }
+    });
+  } else {
+    console.log("EW: Context invalidated, cannot fetch writing style for translation.");
+    if (sidebarContent) sidebarContent.textContent = '錯誤: 擴充功能內部錯誤 (無法讀取設定)';
+    // Hide copy button if translation cannot proceed
+    const copyButton = document.getElementById('ew-copy-button');
+    if (copyButton) copyButton.style.display = 'none';
+  }
+}
+
+// Create and manage the sidebar
+function createSidebar() {
+  if (document.getElementById('ew-sidebar')) return; // Already exists
+
+  sidebar = document.createElement('div');
+  sidebar.id = 'ew-sidebar';
+  sidebar.classList.add('ew-sidebar-collapsed'); // Start collapsed
+
+  sidebarToggle = document.createElement('div');
+  sidebarToggle.id = 'ew-sidebar-toggle';
+  sidebarToggle.textContent = '>'; // Indicate it can be expanded
+
+  sidebarToggle.addEventListener('click', () => {
+    sidebar.classList.toggle('ew-sidebar-collapsed');
+    sidebarToggle.textContent = sidebar.classList.contains('ew-sidebar-collapsed') ? '>' : '<';
+    // Store sidebar state
+    if (chrome.runtime?.id) {
+      chrome.storage.local.set({ sidebarCollapsed: sidebar.classList.contains('ew-sidebar-collapsed') }, () => {
+        if (chrome.runtime.lastError) {
+          console.error("EW: Error saving sidebar state:", chrome.runtime.lastError.message);
+        }
+      });
     } else {
-        sidebar.classList.add('ew-sidebar-collapsed');
-        sidebarToggle.textContent = '>';
+      console.log("EW: Context invalidated, cannot save sidebar state.");
     }
   });
+
+  sidebarContent = document.createElement('div');
+  sidebarContent.id = 'ew-sidebar-content';
+  sidebarContent.textContent = '...'; // Initial text
+
+  const sidebarHeader = document.createElement('h4');
+  sidebarHeader.textContent = "英文寫法";
+  sidebarHeader.style.margin = "0 0 10px 0";
+  sidebarHeader.style.padding = "0";
+
+  sidebar.appendChild(sidebarToggle);
+  sidebar.appendChild(sidebarHeader);
+  sidebar.appendChild(sidebarContent);
+
+  const copyButton = document.createElement('button');
+  copyButton.id = 'ew-copy-button';
+  copyButton.textContent = '複製翻譯';
+  copyButton.style.display = 'none'; // Initially hidden
+  copyButton.addEventListener('click', () => {
+    if (sidebarContent && sidebarContent.textContent && !sidebarContent.textContent.startsWith('翻譯中...') && !sidebarContent.textContent.startsWith('錯誤:') && sidebarContent.textContent !== '...' && sidebarContent.textContent !== '無翻譯結果' && !sidebarContent.textContent.startsWith('輸入中:')) {
+      navigator.clipboard.writeText(sidebarContent.textContent).then(() => {
+        const originalText = copyButton.textContent;
+        copyButton.textContent = '已複製!';
+        setTimeout(() => {
+          copyButton.textContent = originalText;
+        }, 1500);
+      }).catch(err => {
+        console.error('EW: Could not copy text: ', err);
+        // Optionally, provide error feedback on the button itself
+      });
+    }
+  });
+  sidebar.appendChild(copyButton);
+
+  document.body.appendChild(sidebar);
+
+  // Restore sidebar state
+  if (chrome.runtime?.id) {
+    chrome.storage.local.get('sidebarCollapsed', (result) => {
+      if (chrome.runtime.lastError) { 
+        console.error("EW: Error restoring sidebar state:", chrome.runtime.lastError.message);
+        return;
+      }
+      if (result.sidebarCollapsed === false) { 
+        sidebar.classList.remove('ew-sidebar-collapsed');
+        sidebarToggle.textContent = '<';
+      } else {
+        sidebar.classList.add('ew-sidebar-collapsed');
+        sidebarToggle.textContent = '>';
+      }
+    });
+  } else {
+    console.log("EW: Context invalidated, cannot restore sidebar state.");
+  }
 }
 
 // Ensure UI is initialized when the script loads if enabled
