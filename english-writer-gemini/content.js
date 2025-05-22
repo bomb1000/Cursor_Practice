@@ -108,7 +108,17 @@ function handleGlobalKeyDown(event) {
     } else if (key === "Enter") {
       if (keyBuffer.length > 0) {
         clearTimeout(keyDebounceTimer);
-        processBufferedKeys();
+        if (chrome.runtime?.id) {
+          try {
+            processBufferedKeys();
+          } catch (err) {
+            console.warn('EW: Error calling processBufferedKeys(), context likely invalidated:', err);
+          }
+        } else {
+          console.warn('EW: Context invalidated, cannot process Enter key action.');
+          // keyBuffer = ""; 
+          // if (sidebarContent) sidebarContent.textContent = '...';
+        }
       }
     } else if (key === "Escape") {
       keyBuffer = "";
