@@ -72,4 +72,32 @@
 #ew-sidebar-content {
   word-wrap: break-word;
   white-space: pre-wrap;
+  margin-bottom: 10px; /* Add some space before the copy button */
 } 
+
+#ew-copy-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block; /* Changed from block to inline-block if needed, or keep as block/flex */
+  font-size: 13px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 5px; /* Space from content above */
+  width: 100%; /* Make button full width */
+  box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
+
+#ew-copy-button:hover {
+  background-color: #0056b3;
+}
+
+/* Optional: Styles for a disabled state if you choose to use it
+#ew-copy-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+*/
