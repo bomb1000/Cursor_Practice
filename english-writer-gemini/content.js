@@ -1,11 +1,12 @@
-let currentInput = null;
-let bottomBar = null;
+// Global variables
 let sidebar = null;
 let sidebarContent = null;
 let sidebarToggle = null;
-let debounceTimer = null;
 let isExtensionEnabled = true;
+let keyBuffer = "";
+let keyDebounceTimer = null;
 
+// Initialize on load
 chrome.storage.sync.get(['isEnabled', 'writingStyle'], (result) => {
   isExtensionEnabled = typeof result.isEnabled === 'undefined' ? true : result.isEnabled;
   if (isExtensionEnabled) {
@@ -13,157 +14,188 @@ chrome.storage.sync.get(['isEnabled', 'writingStyle'], (result) => {
   }
 });
 
+// Listen for messages from popup or background
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'TOGGLE_ENABLED') {
     isExtensionEnabled = request.enabled;
     if (isExtensionEnabled) {
       initializeUI();
-      if (sidebar) sidebar.style.display = 'block';
+      if (sidebar) sidebar.style.display = 'block'; // Show sidebar if it exists
     } else {
       removeUI();
     }
     sendResponse({ status: "Visibility toggled" });
   } else if (request.type === 'UPDATE_SIDEBAR') {
     if (sidebarContent && isExtensionEnabled) {
-        sidebarContent.textContent = request.text;
+      sidebarContent.textContent = request.text;
     }
     sendResponse({ status: "Sidebar updated" });
   }
-  return true;
+  return true; // Indicates asynchronous response
 });
 
+// Initialize UI elements and event listeners
 function initializeUI() {
-  if (!document.getElementById('ew-sidebar')) createSidebar();
-  document.addEventListener('focusin', handleFocusIn);
-  document.addEventListener('focusout', handleFocusOut);
-}
-
-function removeUI() {
-    if (bottomBar) {
-        bottomBar.remove();
-        bottomBar = null;
-    }
-    if (sidebar) {
-        sidebar.remove();
-        sidebar = null;
-        sidebarContent = null;
-        sidebarToggle = null;
-    }
-    document.removeEventListener('focusin', handleFocusIn);
-    document.removeEventListener('focusout', handleFocusOut);
-    if (currentInput) {
-        currentInput.removeEventListener('input', handleInput);
-        currentInput = null;
-    }
-}
-
-function handleFocusIn(event) {
-  if (!isExtensionEnabled) return;
-  const target = event.target;
-  if (target.tagName === 'INPUT' && (target.type === 'text' || target.type === 'search' || target.type === 'email' || target.type === 'url' || target.type === 'password') || target.tagName === 'TEXTAREA') {
-    if (target.id === 'ew-bottom-bar-input') return;
-
-    currentInput = target;
-    currentInput.addEventListener('input', handleInput);
-    showBottomBar(currentInput);
-    if (currentInput.value.trim()) {
-       triggerTranslation(currentInput.value.trim());
-    }
+  if (!document.getElementById('ew-sidebar')) {
+    createSidebar();
+  }
+  // Add global key listener if not already added
+  if (!document.ewKeydownListenerAttached) {
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    document.ewKeydownListenerAttached = true;
   }
 }
 
-function handleFocusOut(event) {
-  setTimeout(() => {
-    if (currentInput === event.target && !document.activeElement.closest('#ew-bottom-bar')) {
-      if (currentInput) {
-        currentInput.removeEventListener('input', handleInput);
-        currentInput = null;
-      }
-      if (bottomBar) {
-        bottomBar.style.display = 'none';
-      }
+// Remove UI elements and event listeners
+function removeUI() {
+  if (sidebar) {
+    sidebar.remove();
+    sidebar = null;
+    sidebarContent = null;
+    sidebarToggle = null;
+  }
+  if (document.ewKeydownListenerAttached) {
+    document.removeEventListener('keydown', handleGlobalKeyDown);
+    document.ewKeydownListenerAttached = false;
+  }
+  clearTimeout(keyDebounceTimer);
+  keyBuffer = "";
+}
+
+// Handle global keydown events
+function handleGlobalKeyDown(event) {
+  if (!isExtensionEnabled) return;
+
+  const activeEl = document.activeElement;
+
+  // 1. Check for password/readonly/disabled fields first
+  if (activeEl) {
+    if (activeEl.type === 'password' || activeEl.readOnly || activeEl.disabled) {
+      keyBuffer = ""; // Clear buffer
+      clearTimeout(keyDebounceTimer);
+      if (sidebarContent) sidebarContent.textContent = '...'; // Reset sidebar
+      return;
     }
-  }, 200);
-}
+  }
 
-function handleInput(event) {
-  if (!isExtensionEnabled || !currentInput) return;
-  const text = event.target.value.trim();
-  
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => {
-    triggerTranslation(text);
-  }, 750);
-}
-
-function triggerTranslation(text) {
-  if (!isExtensionEnabled || !text) {
-    if (bottomBar) bottomBar.textContent = '';
-    if (sidebarContent) sidebarContent.textContent = '...';
+  // 2. Ignore keys with Ctrl, Alt, Meta modifiers (but allow Shift for now)
+  if (event.ctrlKey || event.altKey || event.metaKey) {
+    // console.log("EW: Ignoring key with modifier:", event.key);
     return;
   }
 
-  if (bottomBar) bottomBar.textContent = '翻譯中...';
+  const allowedControlKeys = ["Backspace", "Enter", "Escape", "Process"];
+  const key = event.key;
+
+  // 3. Handle specific allowed control keys
+  if (allowedControlKeys.includes(key)) {
+    if (key === "Backspace") {
+      keyBuffer = keyBuffer.slice(0, -1);
+      if (sidebarContent) sidebarContent.textContent = keyBuffer ? `輸入中: ${keyBuffer}` : '...';
+      clearTimeout(keyDebounceTimer);
+      if (keyBuffer.length > 0) { // Only set timer if buffer still has content
+          keyDebounceTimer = setTimeout(processBufferedKeys, 1000);
+      }
+    } else if (key === "Enter") {
+      if (keyBuffer.length > 0) {
+        clearTimeout(keyDebounceTimer);
+        processBufferedKeys();
+      }
+    } else if (key === "Escape") {
+      keyBuffer = "";
+      clearTimeout(keyDebounceTimer);
+      if (sidebarContent) sidebarContent.textContent = '...';
+    } else if (key === "Process") {
+      // IME is processing. We might get individual characters or composed string later.
+      // For now, we don't add "Process" to buffer.
+      // Debounce timer will be reset by subsequent valid character keys.
+    }
+    return; // Processed an allowed control key
+  }
+
+  // 4. Filter out other non-printable/navigation keys
+  //    Keys like "Shift", "Tab", "CapsLock", Arrows, F1-F12, "Delete", "Home", "End" etc.
+  //    will have event.key.length > 1 (or are not single characters).
+  //    We only want to buffer single characters.
+  if (key.length !== 1) {
+    // console.log("EW: Ignoring non-printable/non-allowed control key:", key);
+    return;
+  }
+
+  // 5. Append printable character to buffer
+  keyBuffer += key;
+  if (sidebarContent) {
+    sidebarContent.textContent = `輸入中: ${keyBuffer}`;
+  }
+
+  // Debounce translation trigger
+  clearTimeout(keyDebounceTimer);
+  keyDebounceTimer = setTimeout(processBufferedKeys, 1000); // 1 second debounce
+}
+
+// Process the buffered keys
+function processBufferedKeys() {
+  if (keyBuffer.trim().length > 0) {
+    triggerTranslation(keyBuffer.trim());
+  }
+  // keyBuffer = ""; // Clear buffer after processing or if empty
+  // -> Clearing buffer here means if translation fails or user continues typing, it starts fresh.
+  //    Consider if buffer should only be cleared on successful translation or explicit clear (Esc).
+  //    For now, let's clear it as per original plan.
+  keyBuffer = ""; 
+}
+
+// Trigger translation and update sidebar
+function triggerTranslation(text) {
+  if (!isExtensionEnabled || !text) {
+    if (sidebarContent) sidebarContent.textContent = '...'; // Reset sidebar if no text
+    return;
+  }
+
   if (sidebarContent) sidebarContent.textContent = '翻譯中...';
-  
+
   chrome.storage.sync.get(['writingStyle'], (settings) => {
     chrome.runtime.sendMessage({ type: 'TRANSLATE_TEXT', text: text, style: settings.writingStyle }, (response) => {
       if (chrome.runtime.lastError) {
         console.error("Error sending message:", chrome.runtime.lastError.message);
-        if (bottomBar) bottomBar.textContent = `錯誤: ${chrome.runtime.lastError.message}`;
         if (sidebarContent) sidebarContent.textContent = `錯誤: ${chrome.runtime.lastError.message}`;
         return;
       }
       if (response && response.translatedText) {
-        if (bottomBar && currentInput) bottomBar.textContent = response.translatedText;
         if (sidebarContent) sidebarContent.textContent = response.translatedText;
       } else if (response && response.error) {
         console.error('Translation API error:', response.error);
-        if (bottomBar && currentInput) bottomBar.textContent = `翻譯錯誤: ${response.error}`;
         if (sidebarContent) sidebarContent.textContent = `翻譯錯誤: ${response.error}`;
       } else {
-        if (bottomBar && currentInput) bottomBar.textContent = '無翻譯結果';
         if (sidebarContent) sidebarContent.textContent = '無翻譯結果';
       }
     });
   });
 }
 
-function showBottomBar(targetElement) {
-  if (!isExtensionEnabled) return;
-  if (!bottomBar) {
-    bottomBar = document.createElement('div');
-    bottomBar.id = 'ew-bottom-bar';
-    document.body.appendChild(bottomBar);
-  }
-  const rect = targetElement.getBoundingClientRect();
-  bottomBar.style.display = 'block';
-  bottomBar.style.top = `${window.scrollY + rect.bottom + 2}px`;
-  bottomBar.style.left = `${window.scrollX + rect.left}px`;
-  bottomBar.style.width = `${rect.width}px`;
-  bottomBar.textContent = '...';
-}
-
+// Create and manage the sidebar
 function createSidebar() {
-  if (!isExtensionEnabled || document.getElementById('ew-sidebar')) return;
+  if (document.getElementById('ew-sidebar')) return; // Already exists
 
   sidebar = document.createElement('div');
   sidebar.id = 'ew-sidebar';
-  sidebar.classList.add('ew-sidebar-collapsed');
+  sidebar.classList.add('ew-sidebar-collapsed'); // Start collapsed
 
   sidebarToggle = document.createElement('div');
   sidebarToggle.id = 'ew-sidebar-toggle';
-  sidebarToggle.textContent = '>';
+  sidebarToggle.textContent = '>'; // Indicate it can be expanded
 
   sidebarToggle.addEventListener('click', () => {
     sidebar.classList.toggle('ew-sidebar-collapsed');
     sidebarToggle.textContent = sidebar.classList.contains('ew-sidebar-collapsed') ? '>' : '<';
+    // Store sidebar state
+    chrome.storage.local.set({ sidebarCollapsed: sidebar.classList.contains('ew-sidebar-collapsed') });
   });
 
   sidebarContent = document.createElement('div');
   sidebarContent.id = 'ew-sidebar-content';
-  sidebarContent.textContent = '輸入中文後將在此顯示英文翻譯。';
-  
+  sidebarContent.textContent = '...'; // Initial text
+
   const sidebarHeader = document.createElement('h4');
   sidebarHeader.textContent = "英文寫法";
   sidebarHeader.style.margin = "0 0 10px 0";
@@ -172,47 +204,46 @@ function createSidebar() {
   sidebar.appendChild(sidebarToggle);
   sidebar.appendChild(sidebarHeader);
   sidebar.appendChild(sidebarContent);
-  document.body.appendChild(sidebar);
-}
 
-// ChatGPT 專用：動態偵測 <textarea> 並自動監聽
-function observeChatGPTTextarea() {
-  let lastTextarea = null;
-  function attachToTextarea(textarea) {
-    if (lastTextarea === textarea) return;
-    if (lastTextarea) lastTextarea.removeEventListener('input', handleInput);
-    lastTextarea = textarea;
-    textarea.addEventListener('input', handleInput);
-    showBottomBar(textarea);
-    if (textarea.value.trim()) triggerTranslation(textarea.value.trim());
-  }
-  // 初始偵測
-  const tryAttach = () => {
-    // ChatGPT 目前的輸入框通常是 <textarea> 且有 data-id 屬性
-    const textarea = document.querySelector('form textarea');
-    if (textarea) attachToTextarea(textarea);
-  };
-  tryAttach();
-  // 監控 DOM 變化
-  const observer = new MutationObserver(() => {
-    tryAttach();
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
-}
-
-if (isExtensionEnabled) {
-    if (document.readyState === "complete" || document.readyState === "interactive") {
-        initializeUI();
-        // ChatGPT 支援 (同時支援 chat.openai.com 及 chatgpt.com)
-        if (window.location.hostname.includes('chat.openai.com') || window.location.hostname.includes('chatgpt.com')) {
-          observeChatGPTTextarea();
-        }
-    } else {
-        document.addEventListener("DOMContentLoaded", () => {
-          initializeUI();
-          if (window.location.hostname.includes('chat.openai.com') || window.location.hostname.includes('chatgpt.com')) {
-            observeChatGPTTextarea();
-          }
-        });
+  const copyButton = document.createElement('button');
+  copyButton.id = 'ew-copy-button';
+  copyButton.textContent = '複製翻譯';
+  copyButton.style.display = 'none'; // Initially hidden
+  copyButton.addEventListener('click', () => {
+    if (sidebarContent && sidebarContent.textContent && !sidebarContent.textContent.startsWith('翻譯中...') && !sidebarContent.textContent.startsWith('錯誤:') && sidebarContent.textContent !== '...' && sidebarContent.textContent !== '無翻譯結果' && !sidebarContent.textContent.startsWith('輸入中:')) {
+      navigator.clipboard.writeText(sidebarContent.textContent).then(() => {
+        const originalText = copyButton.textContent;
+        copyButton.textContent = '已複製!';
+        setTimeout(() => {
+          copyButton.textContent = originalText;
+        }, 1500);
+      }).catch(err => {
+        console.error('EW: Could not copy text: ', err);
+        // Optionally, provide error feedback on the button itself
+      });
     }
-} 
+  });
+  sidebar.appendChild(copyButton);
+
+  document.body.appendChild(sidebar);
+
+  // Restore sidebar state
+  chrome.storage.local.get('sidebarCollapsed', (result) => {
+    if (result.sidebarCollapsed === false) { // Check for explicitly false
+        sidebar.classList.remove('ew-sidebar-collapsed');
+        sidebarToggle.textContent = '<';
+    } else {
+        sidebar.classList.add('ew-sidebar-collapsed');
+        sidebarToggle.textContent = '>';
+    }
+  });
+}
+
+// Ensure UI is initialized when the script loads if enabled
+if (isExtensionEnabled) {
+  if (document.readyState === "complete" || document.readyState === "interactive") {
+    initializeUI();
+  } else {
+    document.addEventListener("DOMContentLoaded", initializeUI);
+  }
+}
