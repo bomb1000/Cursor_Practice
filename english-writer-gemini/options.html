@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>英文寫作助手設定</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; width: 400px; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; }
+    input[type="text"], select { width: 100%; padding: 8px; box-sizing: border-box; }
+    button { padding: 10px 15px; background-color: #4CAF50; color: white; border: none; cursor: pointer; }
+    button:hover { background-color: #45a049; }
+    .status { margin-top: 10px; font-style: italic; }
+  </style>
+</head>
+<body>
+  <h1>設定</h1>
+
+  <div class="form-group">
+    <label for="apiProvider">API 服務商:</label>
+    <select id="apiProvider">
+      <option value="gemini">Google Gemini</option>
+      <option value="openai">OpenAI (ChatGPT)</option>
+    </select>
+  </div>
+
+  <div class="form-group" id="geminiKeyGroup">
+    <label for="apiKey">Gemini API 金鑰:</label>
+    <input type="text" id="apiKey" placeholder="在此輸入你的 Gemini API Key">
+  </div>
+
+  <div class="form-group" id="openaiKeyGroup" style="display:none;">
+    <label for="openaiApiKey">OpenAI API 金鑰:</label>
+    <input type="text" id="openaiApiKey" placeholder="在此輸入你的 OpenAI API Key">
+  </div>
+
+  <div class="form-group">
+    <label for="writingStyle">預設英文風格:</label>
+    <select id="writingStyle">
+      <option value="formal">正式寫作 (Formal)</option>
+      <option value="casual">輕鬆口語 (Casual)</option>
+    </select>
+  </div>
+
+  <button id="saveOptions">儲存設定</button>
+  <div id="status" class="status"></div>
+
+  <script src="options.js"></script>
+</body>
+</html> 

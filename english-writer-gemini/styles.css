@@ -1,0 +1,75 @@
+/* 下方長條文字框 */
+#ew-bottom-bar {
+  position: absolute;
+  background-color: #f9f9f9;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 13px;
+  color: #333;
+  z-index: 99999;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  max-height: 100px;
+  overflow-y: auto;
+  box-sizing: border-box;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+/* 右側邊欄 */
+#ew-sidebar {
+  position: fixed;
+  top: 20%;
+  right: 0;
+  width: 280px;
+  height: auto;
+  min-height: 100px;
+  max-height: 60vh;
+  background-color: #ffffff;
+  border: 1px solid #ddd;
+  border-right: none;
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+  box-shadow: -3px 0px 10px rgba(0,0,0,0.15);
+  z-index: 100000;
+  padding: 15px;
+  padding-left: 25px;
+  box-sizing: border-box;
+  transition: transform 0.3s ease-in-out;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+#ew-sidebar.ew-sidebar-collapsed {
+  transform: translateX(calc(100% - 20px));
+}
+
+#ew-sidebar-toggle {
+  position: absolute;
+  left: 0px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 40px;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  border-right: none;
+  border-top-left-radius: 5px;
+  border-bottom-left-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: #555;
+  user-select: none;
+}
+#ew-sidebar-toggle:hover {
+  background-color: #e0e0e0;
+}
+
+#ew-sidebar-content {
+  word-wrap: break-word;
+  white-space: pre-wrap;
+} 
