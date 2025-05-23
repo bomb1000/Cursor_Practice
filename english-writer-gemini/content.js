@@ -74,6 +74,7 @@ function removeUI() {
 // Handle global keydown events
 function handleGlobalKeyDown(event) {
   if (!isExtensionEnabled) return;
+  console.log("EW: KeyDown event - Key:", event.key, "| Code:", event.code, "| isComposing:", event.isComposing);
 
   const activeEl = document.activeElement;
 
@@ -136,10 +137,10 @@ function handleGlobalKeyDown(event) {
   //    Keys like "Shift", "Tab", "CapsLock", Arrows, F1-F12, "Delete", "Home", "End" etc.
   //    will have event.key.length > 1 (or are not single characters).
   //    We only want to buffer single characters.
-  if (key.length !== 1) {
-    // console.log("EW: Ignoring non-printable/non-allowed control key:", key);
-    return;
-  }
+  // if (key.length !== 1) { // REMOVED THIS BLOCK
+    // // console.log("EW: Ignoring non-printable/non-allowed control key:", key);
+    // return;
+  // }
 
   // 5. Append printable character to buffer
   keyBuffer += key;
@@ -155,43 +156,46 @@ function handleGlobalKeyDown(event) {
 // Process the buffered keys
 function processBufferedKeys() {
   if (keyBuffer.trim().length > 0) {
-    triggerTranslation(keyBuffer.trim());
+    triggerTranslation(keyBuffer.trim()); // keyBuffer is NOT cleared here anymore
   }
-  // keyBuffer = ""; // Clear buffer after processing or if empty
-  // -> Clearing buffer here means if translation fails or user continues typing, it starts fresh.
-  //    Consider if buffer should only be cleared on successful translation or explicit clear (Esc).
-  //    For now, let's clear it as per original plan.
-  keyBuffer = ""; 
+  // keyBuffer = ""; // REMOVE THIS LINE
 }
 
 // Trigger translation and update sidebar
 function triggerTranslation(text) {
+  console.log("EW: triggerTranslation called with text:", text); // ADD LOG
   if (!isExtensionEnabled || !text) {
     if (sidebarContent) sidebarContent.textContent = '...'; // Reset sidebar if no text
+    keyBuffer = ""; // Clear buffer if no action taken
     return;
   }
 
   if (sidebarContent) sidebarContent.textContent = '翻譯中...';
+  const copyButton = document.getElementById('ew-copy-button'); // Fetch once
+  if (copyButton) copyButton.style.display = 'none'; // Hide initially
 
   if (chrome.runtime?.id) {
     chrome.storage.sync.get(['writingStyle'], (settings) => {
       if (chrome.runtime.lastError) { // Check for errors during storage.get itself
         console.error("EW: Error getting writingStyle:", chrome.runtime.lastError.message);
         if (sidebarContent) sidebarContent.textContent = '錯誤: 無法讀取風格設定。';
-        const copyButton = document.getElementById('ew-copy-button');
         if (copyButton) copyButton.style.display = 'none';
+        keyBuffer = ""; // Clear buffer on error
         return;
       }
+      console.log("EW: Writing style fetched:", settings.writingStyle); // ADD LOG
 
       // Now, check context *before* sendMessage
       if (chrome.runtime?.id) {
         chrome.runtime.sendMessage({ type: 'TRANSLATE_TEXT', text: text, style: settings.writingStyle }, (response) => {
-          const currentCopyButton = document.getElementById('ew-copy-button'); // Re-fetch button
+          console.log("EW: Response from background:", response); // ADD LOG
+          keyBuffer = ""; // Clear buffer after response or error from sendMessage
+          
           if (chrome.runtime.lastError) {
             console.error("Error sending message:", chrome.runtime.lastError.message);
             if (sidebarContent) sidebarContent.textContent = `錯誤: ${chrome.runtime.lastError.message}`;
-            if (currentCopyButton) currentCopyButton.style.display = 'none';
-            return;
+            if (copyButton) copyButton.style.display = 'none';
+            return; // keyBuffer already cleared
           }
           
           if (response && response.translatedText) {
@@ -204,32 +208,32 @@ function triggerTranslation(text) {
           }
 
           // Update copy button visibility based on the final state of sidebarContent
-          if (currentCopyButton) {
+          if (copyButton) {
             if (sidebarContent && sidebarContent.textContent && 
                 !sidebarContent.textContent.startsWith('錯誤:') && 
                 !sidebarContent.textContent.startsWith('翻譯中...') &&
                 !sidebarContent.textContent.startsWith('輸入中:') &&
                 sidebarContent.textContent !== '...' &&
                 sidebarContent.textContent !== '無翻譯結果') {
-              currentCopyButton.style.display = 'block';
+              copyButton.style.display = 'block';
             } else {
-              currentCopyButton.style.display = 'none';
+              copyButton.style.display = 'none';
             }
           }
         });
       } else {
         console.log("EW: Context invalidated, cannot send translation request.");
         if (sidebarContent) sidebarContent.textContent = '錯誤: 擴充功能連線已中斷，請嘗試刷新頁面。';
-        const copyButton = document.getElementById('ew-copy-button');
         if (copyButton) copyButton.style.display = 'none';
+        keyBuffer = ""; // Clear buffer on error
       }
     });
   } else {
     // This outer else handles the case where chrome.runtime.id was null before even trying storage.get
     console.log("EW: Context invalidated, cannot fetch writing style for translation (outer check).");
     if (sidebarContent) sidebarContent.textContent = '錯誤: 擴充功能內部錯誤 (無法讀取設定)';
-    const copyButton = document.getElementById('ew-copy-button');
     if (copyButton) copyButton.style.display = 'none';
+    keyBuffer = ""; // Clear buffer on error
   }
 }
 
