@@ -40,6 +40,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
     sendResponse({ status: "Sidebar updated" });
   } else if (request.type === 'DISPLAY_TRANSLATION') {
+    console.log("EW: content.js received DISPLAY_TRANSLATION message. Request object:", JSON.parse(JSON.stringify(request)));
     if (!sidebar || !sidebarContent || !sidebarToggle) { // Check if sidebar elements are available
       console.log("EW: Sidebar not fully initialized, creating it now for DISPLAY_TRANSLATION.");
       createSidebar(); // Attempt to create it if not present
@@ -51,16 +52,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     if (request.data) {
       if (request.data.translatedText && request.data.translatedText.trim() !== "") {
+        console.log("EW: Displaying translated text in sidebar:", request.data.translatedText);
         sidebarContent.textContent = request.data.translatedText;
         if (copyButton) copyButton.style.display = 'block';
       } else if (request.data.error) {
+        console.log("EW: Displaying error in sidebar:", request.data.error);
         sidebarContent.textContent = request.data.error;
         if (copyButton) copyButton.style.display = 'none';
       } else {
+        console.log("EW: Displaying default message for no translation/unknown error.");
         sidebarContent.textContent = '無翻譯結果或未知錯誤。';
         if (copyButton) copyButton.style.display = 'none';
       }
     } else {
+      console.log("EW: Displaying default message for invalid/missing data in DISPLAY_TRANSLATION.");
       sidebarContent.textContent = '收到無效的翻譯資料。'; // Received invalid translation data.
       if (copyButton) copyButton.style.display = 'none';
     }
