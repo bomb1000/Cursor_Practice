@@ -152,22 +152,26 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       });
     }
   } else if (info.menuItemId === "translateSelectedText") {
+    console.log("EW_BACKGROUND: 'translateSelectedText' context menu handler entered. Info:", JSON.parse(JSON.stringify(info)), "Tab:", JSON.parse(JSON.stringify(tab)));
     if (!tab || typeof tab.id === 'undefined') {
-      console.error("EW: Tab ID is missing, cannot execute script.");
+      console.error("EW: Tab ID is missing, cannot execute script."); // This log remains, but the subtask focuses on the new ones.
       return;
     }
 
+    console.log("EW_BACKGROUND: Attempting to execute script to get selection in tab:", tab?.id);
     chrome.scripting.executeScript({
       target: { tabId: tab.id },
       function: () => window.getSelection().toString()
     }, (injectionResults) => {
       if (chrome.runtime.lastError) {
-        console.error("EW: Error executing script to get selection:", chrome.runtime.lastError.message);
+        console.error("EW_BACKGROUND: Error executing script to get selection:", chrome.runtime.lastError.message);
+        // The existing console.error for "EW: Error executing script..." is fine.
         chrome.tabs.sendMessage(tab.id, { type: "DISPLAY_TRANSLATION", data: { error: "Error getting selected text: " + chrome.runtime.lastError.message } });
         return;
       }
+      console.log("EW_BACKGROUND: Injection results received:", JSON.parse(JSON.stringify(injectionResults)));
       if (!injectionResults || injectionResults.length === 0 || !injectionResults[0].result) {
-        console.log("EW: No text selected or could not retrieve selection.");
+        // The existing console.log for "EW: No text selected..." is fine.
         chrome.tabs.sendMessage(tab.id, { type: "DISPLAY_TRANSLATION", data: { error: "No text was selected to translate." } });
         return;
       }
@@ -175,20 +179,20 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       const selectedText = injectionResults[0].result.trim();
       
       if (selectedText) {
-        // console.log("EW: Selected text:", selectedText); // Optional: keep for debugging if needed
+        console.log("EW_BACKGROUND: Selected text for translation:", selectedText);
         // Call handleTranslationRequest
         // The style can be null to use the default from settings
         handleTranslationRequest(selectedText, null)
           .then(translationResult => {
-            // console.log("EW: Translation result from handleTranslationRequest:", translationResult); 
+            console.log("EW_BACKGROUND: Translation successful, sending to content script. Result:", JSON.parse(JSON.stringify(translationResult)));
             chrome.tabs.sendMessage(tab.id, { type: "DISPLAY_TRANSLATION", data: translationResult });
           })
           .catch(error => {
-            // console.error("EW: Error during translation of selected text:", error);
+            console.error("EW_BACKGROUND: Translation failed, sending error to content script. Error:", error.message);
             chrome.tabs.sendMessage(tab.id, { type: "DISPLAY_TRANSLATION", data: { error: error.message || "An unknown error occurred during translation." } });
           });
       } else {
-        // console.log("EW: Selected text is empty after trim.");
+        // The existing console.log for "EW: Selected text is empty..." is fine.
         chrome.tabs.sendMessage(tab.id, { type: "DISPLAY_TRANSLATION", data: { error: "Selected text is empty." } });
       }
     });
