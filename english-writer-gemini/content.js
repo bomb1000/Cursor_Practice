@@ -3,8 +3,8 @@ let sidebar = null;
 let sidebarContent = null;
 let sidebarToggle = null;
 let isExtensionEnabled = true;
-let keyBuffer = "";
-let keyDebounceTimer = null;
+// let keyBuffer = ""; // REMOVED
+// let keyDebounceTimer = null; // REMOVED
 
 // Initialize on load
 if (chrome.runtime?.id) {
@@ -39,6 +39,45 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sidebarContent.textContent = request.text;
     }
     sendResponse({ status: "Sidebar updated" });
+  } else if (request.type === 'DISPLAY_TRANSLATION') {
+    if (!sidebar || !sidebarContent || !sidebarToggle) { // Check if sidebar elements are available
+      console.log("EW: Sidebar not fully initialized, creating it now for DISPLAY_TRANSLATION.");
+      createSidebar(); // Attempt to create it if not present
+      // It's possible createSidebar might not fully complete synchronously if it involves async storage calls
+      // For now, we'll assume it makes sidebarContent, etc., available or rely on the next access.
+    }
+
+    const copyButton = document.getElementById('ew-copy-button');
+
+    if (request.data) {
+      if (request.data.translatedText && request.data.translatedText.trim() !== "") {
+        sidebarContent.textContent = request.data.translatedText;
+        if (copyButton) copyButton.style.display = 'block';
+      } else if (request.data.error) {
+        sidebarContent.textContent = request.data.error;
+        if (copyButton) copyButton.style.display = 'none';
+      } else {
+        sidebarContent.textContent = '無翻譯結果或未知錯誤。';
+        if (copyButton) copyButton.style.display = 'none';
+      }
+    } else {
+      sidebarContent.textContent = '收到無效的翻譯資料。'; // Received invalid translation data.
+      if (copyButton) copyButton.style.display = 'none';
+    }
+
+    // Ensure sidebar is visible and expanded
+    if (sidebar && sidebarToggle) {
+      sidebar.style.display = 'block'; // Ensure it's not display:none from a previous TOGGLE_ENABLED to false
+      if (sidebar.classList.contains('ew-sidebar-collapsed')) {
+        sidebar.classList.remove('ew-sidebar-collapsed');
+        sidebarToggle.textContent = '<';
+        // Optionally save this expanded state
+        if (chrome.runtime?.id) {
+          chrome.storage.local.set({ sidebarCollapsed: false });
+        }
+      }
+    }
+    sendResponse({ status: "Translation displayed" });
   }
   return true; // Indicates asynchronous response
 });
@@ -48,11 +87,11 @@ function initializeUI() {
   if (!document.getElementById('ew-sidebar')) {
     createSidebar();
   }
-  // Add global key listener if not already added
-  if (!document.ewKeydownListenerAttached) {
-    document.addEventListener('keydown', handleGlobalKeyDown);
-    document.ewKeydownListenerAttached = true;
-  }
+  // REMOVED global key listener attachment
+  // if (!document.ewKeydownListenerAttached) {
+  //   document.addEventListener('keydown', handleGlobalKeyDown);
+  //   document.ewKeydownListenerAttached = true;
+  // }
 }
 
 // Remove UI elements and event listeners
@@ -63,103 +102,17 @@ function removeUI() {
     sidebarContent = null;
     sidebarToggle = null;
   }
-  if (document.ewKeydownListenerAttached) {
-    document.removeEventListener('keydown', handleGlobalKeyDown);
-    document.ewKeydownListenerAttached = false;
-  }
-  clearTimeout(keyDebounceTimer);
-  keyBuffer = "";
-}
-
-// Handle global keydown events
-function handleGlobalKeyDown(event) {
-  if (!isExtensionEnabled) return;
-  console.log("EW: KeyDown event - Key:", event.key, "| Code:", event.code, "| isComposing:", event.isComposing);
-
-  const activeEl = document.activeElement;
-
-  // 1. Check for password/readonly/disabled fields first
-  if (activeEl) {
-    if (activeEl.type === 'password' || activeEl.readOnly || activeEl.disabled) {
-      keyBuffer = ""; // Clear buffer
-      clearTimeout(keyDebounceTimer);
-      if (sidebarContent) sidebarContent.textContent = '...'; // Reset sidebar
-      return;
-    }
-  }
-
-  // 2. Ignore keys with Ctrl, Alt, Meta modifiers (but allow Shift for now)
-  if (event.ctrlKey || event.altKey || event.metaKey) {
-    // console.log("EW: Ignoring key with modifier:", event.key);
-    return;
-  }
-
-  const allowedControlKeys = ["Backspace", "Enter", "Escape", "Process"];
-  const key = event.key;
-
-  // 3. Handle specific allowed control keys
-  if (allowedControlKeys.includes(key)) {
-    if (key === "Backspace") {
-      keyBuffer = keyBuffer.slice(0, -1);
-      if (sidebarContent) sidebarContent.textContent = keyBuffer ? `輸入中: ${keyBuffer}` : '...';
-      clearTimeout(keyDebounceTimer);
-      if (keyBuffer.length > 0) { // Only set timer if buffer still has content
-          keyDebounceTimer = setTimeout(processBufferedKeys, 1000);
-      }
-    } else if (key === "Enter") {
-      if (keyBuffer.length > 0) {
-        clearTimeout(keyDebounceTimer);
-        if (chrome.runtime?.id) {
-          try {
-            processBufferedKeys();
-          } catch (err) {
-            console.warn('EW: Error calling processBufferedKeys(), context likely invalidated:', err);
-          }
-        } else {
-          console.warn('EW: Context invalidated, cannot process Enter key action.');
-          // keyBuffer = ""; 
-          // if (sidebarContent) sidebarContent.textContent = '...';
-        }
-      }
-    } else if (key === "Escape") {
-      keyBuffer = "";
-      clearTimeout(keyDebounceTimer);
-      if (sidebarContent) sidebarContent.textContent = '...';
-    } else if (key === "Process") {
-      // IME is processing. We might get individual characters or composed string later.
-      // For now, we don't add "Process" to buffer.
-      // Debounce timer will be reset by subsequent valid character keys.
-    }
-    return; // Processed an allowed control key
-  }
-
-  // 4. Filter out other non-printable/navigation keys
-  //    Keys like "Shift", "Tab", "CapsLock", Arrows, F1-F12, "Delete", "Home", "End" etc.
-  //    will have event.key.length > 1 (or are not single characters).
-  //    We only want to buffer single characters.
-  // if (key.length !== 1) { // REMOVED THIS BLOCK
-    // // console.log("EW: Ignoring non-printable/non-allowed control key:", key);
-    // return;
+  // REMOVED global key listener detachment and timer/buffer clearing
+  // if (document.ewKeydownListenerAttached) {
+  //   document.removeEventListener('keydown', handleGlobalKeyDown);
+  //   document.ewKeydownListenerAttached = false;
   // }
-
-  // 5. Append printable character to buffer
-  keyBuffer += key;
-  if (sidebarContent) {
-    sidebarContent.textContent = `輸入中: ${keyBuffer}`;
-  }
-
-  // Debounce translation trigger
-  clearTimeout(keyDebounceTimer);
-  keyDebounceTimer = setTimeout(processBufferedKeys, 1000); // 1 second debounce
+  // clearTimeout(keyDebounceTimer);
+  // keyBuffer = ""; 
 }
 
-// Process the buffered keys
-function processBufferedKeys() {
-  if (keyBuffer.trim().length > 0) {
-    triggerTranslation(keyBuffer.trim()); // keyBuffer is NOT cleared here anymore
-  }
-  // keyBuffer = ""; // REMOVE THIS LINE
-}
+// DELETED handleGlobalKeyDown function
+// DELETED processBufferedKeys function
 
 // Trigger translation and update sidebar
 function triggerTranslation(text) {

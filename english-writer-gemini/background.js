@@ -110,21 +110,87 @@ function buildPrompt(chineseText, style) {
   return `${styleDescription}\n\nTraditional Chinese: \"${chineseText}\"\n\nEnglish Translation:`;
 }
 
-// (可選) 添加右鍵選單來快速開/關插件
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({
-    id: "toggleExtensionState",
-    title: "啟用/停用英文寫作助手",
-    contexts: ["all"]
+// Function to setup context menus
+function setupContextMenus() {
+  chrome.contextMenus.removeAll(() => { // Remove all to prevent duplicates during development
+    chrome.contextMenus.create({
+      id: "toggleExtensionState",
+      title: "啟用/停用英文寫作助手", // Enable/Disable English Writing Assistant
+      contexts: ["action"] // Changed from "all" to "action" (browser action icon)
+    });
+    chrome.contextMenus.create({
+      id: "translateSelectedText",
+      title: "翻譯選取文字", // Translate Selected Text
+      contexts: ["selection"]
+    });
+    // console.log("EW: Context menus created.");
   });
-});
+}
 
+// Call setup on install or startup
+chrome.runtime.onInstalled.addListener(setupContextMenus);
+// chrome.runtime.onStartup.addListener(setupContextMenus); // Optional: re-create on browser startup
+
+// Listener for context menu clicks
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "toggleExtensionState" && tab && tab.id) {
-    chrome.storage.sync.get(['isEnabled'], (result) => {
-      const newState = typeof result.isEnabled === 'undefined' ? false : !result.isEnabled;
-      chrome.storage.sync.set({ isEnabled: newState });
-      chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_ENABLED', enabled: newState });
+  if (info.menuItemId === "toggleExtensionState") {
+    // Ensure tab.id check for sendMessage
+    if (tab && tab.id) { 
+      chrome.storage.sync.get(['isEnabled'], (result) => {
+        const newState = typeof result.isEnabled === 'undefined' ? false : !result.isEnabled;
+        chrome.storage.sync.set({ isEnabled: newState }, () => {
+          if (chrome.runtime.lastError) {
+            console.error("Error setting isEnabled:", chrome.runtime.lastError);
+            return;
+          }
+          chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_ENABLED', enabled: newState }, (response) => {
+            if (chrome.runtime.lastError) {
+              console.warn("EW: Could not send TOGGLE_ENABLED to tab " + tab.id + ". It might be a system page or closed.", chrome.runtime.lastError.message);
+            }
+          });
+        });
+      });
+    }
+  } else if (info.menuItemId === "translateSelectedText") {
+    if (!tab || typeof tab.id === 'undefined') {
+      console.error("EW: Tab ID is missing, cannot execute script.");
+      return;
+    }
+
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      function: () => window.getSelection().toString()
+    }, (injectionResults) => {
+      if (chrome.runtime.lastError) {
+        console.error("EW: Error executing script to get selection:", chrome.runtime.lastError.message);
+        chrome.tabs.sendMessage(tab.id, { type: "DISPLAY_TRANSLATION", data: { error: "Error getting selected text: " + chrome.runtime.lastError.message } });
+        return;
+      }
+      if (!injectionResults || injectionResults.length === 0 || !injectionResults[0].result) {
+        console.log("EW: No text selected or could not retrieve selection.");
+        chrome.tabs.sendMessage(tab.id, { type: "DISPLAY_TRANSLATION", data: { error: "No text was selected to translate." } });
+        return;
+      }
+      
+      const selectedText = injectionResults[0].result.trim();
+      
+      if (selectedText) {
+        // console.log("EW: Selected text:", selectedText); // Optional: keep for debugging if needed
+        // Call handleTranslationRequest
+        // The style can be null to use the default from settings
+        handleTranslationRequest(selectedText, null)
+          .then(translationResult => {
+            // console.log("EW: Translation result from handleTranslationRequest:", translationResult); 
+            chrome.tabs.sendMessage(tab.id, { type: "DISPLAY_TRANSLATION", data: translationResult });
+          })
+          .catch(error => {
+            // console.error("EW: Error during translation of selected text:", error);
+            chrome.tabs.sendMessage(tab.id, { type: "DISPLAY_TRANSLATION", data: { error: error.message || "An unknown error occurred during translation." } });
+          });
+      } else {
+        // console.log("EW: Selected text is empty after trim.");
+        chrome.tabs.sendMessage(tab.id, { type: "DISPLAY_TRANSLATION", data: { error: "Selected text is empty." } });
+      }
     });
   }
-}); 
+});

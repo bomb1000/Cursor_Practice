@@ -26,11 +26,13 @@
   min-height: 100px;
   max-height: 60vh;
   background-color: #ffffff;
-  border: 1px solid #ddd;
-  border-right: none;
+  border: 2px solid #007bff; /* New prominent border */
+  /* border-right: none; */ /* Removed as we are applying a full border */
   border-top-left-radius: 8px;
   border-bottom-left-radius: 8px;
-  box-shadow: -3px 0px 10px rgba(0,0,0,0.15);
+  border-top-right-radius: 0; /* Ensure these are not rounded if applying full border */
+  border-bottom-right-radius: 0; /* Ensure these are not rounded if applying full border */
+  box-shadow: -2px 0px 8px rgba(0,0,0,0.15); /* Adjusted shadow */
   z-index: 100000;
   padding: 15px;
   padding-left: 25px;
