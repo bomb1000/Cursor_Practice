@@ -87,6 +87,7 @@ async function handleTranslationRequest(text, style) {
         throw new Error(`API Error: ${JSON.stringify(errorData)}`);
       }
       const data = await response.json();
+      console.log("EW_BACKGROUND_API_RESPONSE: Raw JSON response from Gemini API:", JSON.parse(JSON.stringify(data)));
       if (data.candidates && data.candidates.length > 0 && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts.length > 0) {
         const translatedText = data.candidates[0].content.parts[0].text;
         return { translatedText: translatedText.trim() };
