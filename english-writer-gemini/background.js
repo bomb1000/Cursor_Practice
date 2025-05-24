@@ -1,3 +1,4 @@
+console.log("EW_BACKGROUND_TOPLEVEL: background.js script started parsing.");
 // 監聽來自 content_script 的訊息
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'TRANSLATE_TEXT') {
@@ -112,23 +113,37 @@ function buildPrompt(chineseText, style) {
 
 // Function to setup context menus
 function setupContextMenus() {
-  chrome.contextMenus.removeAll(() => { // Remove all to prevent duplicates during development
-    chrome.contextMenus.create({
-      id: "toggleExtensionState",
-      title: "啟用/停用英文寫作助手", // Enable/Disable English Writing Assistant
-      contexts: ["action"] // Changed from "all" to "action" (browser action icon)
+  console.log("EW_BACKGROUND_SETUP: Entering setupContextMenus function, about to remove all menus.");
+  try {
+    chrome.contextMenus.removeAll(() => { // Remove all to prevent duplicates during development
+      console.log("EW_BACKGROUND_SETUP: All context menus removed (if any). Ready to create new ones.");
+      
+      console.log("EW_BACKGROUND_SETUP: Creating context menu item: toggleExtensionState");
+      chrome.contextMenus.create({
+        id: "toggleExtensionState",
+        title: "啟用/停用英文寫作助手", // Enable/Disable English Writing Assistant
+        contexts: ["action"] // Changed from "all" to "action" (browser action icon)
+      });
+      
+      console.log("EW_BACKGROUND_SETUP: Creating context menu item: translateSelectedText");
+      chrome.contextMenus.create({
+        id: "translateSelectedText",
+        title: "翻譯選取文字", // Translate Selected Text
+        contexts: ["selection"]
+      });
+      
+      console.log("EW_BACKGROUND_SETUP: Finished attempting to create context menus.");
     });
-    chrome.contextMenus.create({
-      id: "translateSelectedText",
-      title: "翻譯選取文字", // Translate Selected Text
-      contexts: ["selection"]
-    });
-    // console.log("EW: Context menus created.");
-  });
+  } catch (e) {
+    console.error("EW_BACKGROUND_SETUP: Error during setupContextMenus:", e);
+  }
 }
 
 // Call setup on install or startup
-chrome.runtime.onInstalled.addListener(setupContextMenus);
+chrome.runtime.onInstalled.addListener((details) => {
+  console.log("EW_BACKGROUND_INSTALL: onInstalled event triggered. Details:", JSON.parse(JSON.stringify(details)));
+  setupContextMenus();
+});
 // chrome.runtime.onStartup.addListener(setupContextMenus); // Optional: re-create on browser startup
 
 // Listener for context menu clicks
