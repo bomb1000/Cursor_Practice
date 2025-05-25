@@ -39,9 +39,40 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sidebarContent.textContent = request.text;
     }
     sendResponse({ status: "Sidebar updated" });
+  } else if (request.type === 'TRANSLATION_STARTED') {
+    console.log("EW: content.js received TRANSLATION_STARTED message.");
+    if (!sidebar || !sidebarContent || !sidebarToggle) { // Ensure sidebar elements are created
+        console.log("EW: Sidebar not fully initialized, creating it now for TRANSLATION_STARTED.");
+        createSidebar();
+    }
+    
+    if (sidebarContent) {
+        sidebarContent.innerHTML = '<span class="ew-loading-spinner"></span> 翻譯進行中...';
+    }
+
+    const copyButton = document.getElementById('ew-copy-button');
+    if (copyButton) {
+        copyButton.style.display = 'none';
+    }
+
+    if (sidebar && sidebarToggle) { // Ensure these elements exist before manipulating them
+        sidebar.style.display = 'block'; // Ensure it's visible
+        if (sidebar.classList.contains('ew-sidebar-collapsed')) {
+            sidebar.classList.remove('ew-sidebar-collapsed');
+            sidebarToggle.textContent = '<';
+            // Optionally save this expanded state
+            if (chrome.runtime?.id) {
+                chrome.storage.local.set({ sidebarCollapsed: false });
+            }
+        }
+    }
+    sendResponse({ status: "Translation started UI updated" });
+
   } else if (request.type === 'DISPLAY_TRANSLATION') {
     console.log("EW: content.js received DISPLAY_TRANSLATION message. Request object:", JSON.parse(JSON.stringify(request)));
-    if (!sidebar || !sidebarContent || !sidebarToggle) { // Check if sidebar elements are available
+    // Ensure sidebar elements are available. This is crucial because DISPLAY_TRANSLATION might be the first message
+    // if the content script was just injected for the translation.
+    if (!sidebar || !sidebarContent || !sidebarToggle) { 
       console.log("EW: Sidebar not fully initialized, creating it now for DISPLAY_TRANSLATION.");
       createSidebar(); // Attempt to create it if not present
       // It's possible createSidebar might not fully complete synchronously if it involves async storage calls

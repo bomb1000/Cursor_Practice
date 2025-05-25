@@ -25,17 +25,14 @@
   height: auto;
   min-height: 100px;
   max-height: 60vh;
-  background-color: #ffffff;
-  border: 2px solid #007bff; /* New prominent border */
-  /* border-right: none; */ /* Removed as we are applying a full border */
-  border-top-left-radius: 8px;
-  border-bottom-left-radius: 8px;
-  border-top-right-radius: 0; /* Ensure these are not rounded if applying full border */
-  border-bottom-right-radius: 0; /* Ensure these are not rounded if applying full border */
+  background-color: #f9f9f9; /* Solid light background */
+  color: #202124; /* Dark text color for contrast */
+  border: 2px solid #007bff; /* Existing prominent border */
+  border-radius: 6px; /* Consistent rounded corners */
   box-shadow: -2px 0px 8px rgba(0,0,0,0.15); /* Adjusted shadow */
   z-index: 100000;
   padding: 15px;
-  padding-left: 25px;
+  padding-left: 25px; /* Space for the toggle button */
   box-sizing: border-box;
   transition: transform 0.3s ease-in-out;
   overflow-y: auto;
@@ -103,3 +100,21 @@
   cursor: not-allowed;
 }
 */
+
+.ew-loading-spinner {
+  display: inline-block;
+  border: 3px solid #f0f0f0; /* Lighter grey - matches new sidebar bg better */
+  border-top: 3px solid #007bff; /* Blue */
+  border-radius: 50%;
+  width: 1em; /* Relative to current font size in sidebar */
+  height: 1em;
+  animation: ew-spin 0.8s linear infinite;
+  margin-right: 8px;
+  vertical-align: -0.15em; /* Adjusts spinner to align better with text */
+  box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
+
+@keyframes ew-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

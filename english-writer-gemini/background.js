@@ -156,6 +156,10 @@ async function getSelectedTextAndTranslate(tab, style = null) {
     return;
   }
 
+  // Send TRANSLATION_STARTED message
+  console.log("EW_BACKGROUND: Sending TRANSLATION_STARTED to tab:", tab.id);
+  chrome.tabs.sendMessage(tab.id, { type: "TRANSLATION_STARTED" });
+
   console.log("EW_BACKGROUND: Attempting to execute script to get selection in tab:", tab.id);
   chrome.scripting.executeScript({
     target: { tabId: tab.id },
