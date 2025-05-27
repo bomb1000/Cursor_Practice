@@ -128,6 +128,13 @@
   text-align: center; /* Or as preferred */
 }
 
+#ew-sidebar-header { /* Styling the H4 drag handle */
+  cursor: move;
+  user-select: none;
+  /* Ensure existing margin/padding from inline styles in JS are respected or moved here if preferred */
+  /* For example, if h4 had style.margin = "0 0 10px 0", that still applies */
+}
+
 #ew-font-controls {
   display: flex;
   justify-content: space-between; /* Or 'center', 'flex-end' */
