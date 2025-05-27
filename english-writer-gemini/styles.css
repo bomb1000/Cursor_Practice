@@ -30,7 +30,7 @@
   border: 2px solid #007bff; /* Existing prominent border */
   border-radius: 6px; /* Consistent rounded corners */
   box-shadow: -2px 0px 8px rgba(0,0,0,0.15); /* Adjusted shadow */
-  z-index: 100000;
+  z-index: 2147483647 !important; /* AGGRESSIVE DIAGNOSTIC STYLE */
   padding: 15px;
   padding-left: 25px; /* Space for the toggle button */
   box-sizing: border-box;
@@ -65,6 +65,10 @@
   font-weight: bold;
   color: #555;
   user-select: none;
+  background-color: red !important; /* AGGRESSIVE DIAGNOSTIC STYLE */
+  border: 2px solid yellow !important; /* AGGRESSIVE DIAGNOSTIC STYLE */
+  opacity: 1 !important; /* AGGRESSIVE DIAGNOSTIC STYLE */
+  visibility: visible !important; /* AGGRESSIVE DIAGNOSTIC STYLE */
 }
 #ew-sidebar-toggle:hover {
   background-color: #e0e0e0;
