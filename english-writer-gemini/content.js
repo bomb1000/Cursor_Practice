@@ -10,6 +10,18 @@ const EW_BASE_FONT_SIZE = 14; // Assuming base font size in px for sidebar conte
 let isEwDragging = false;
 let ewDragStartX = 0, ewDragStartY = 0;
 let ewSidebarInitialX = 0, ewSidebarInitialY = 0;
+
+let isEwResizing = false;
+let ewResizeType = ''; // Will be 'left', 'bottom'
+let ewResizeStartX = 0, ewResizeStartY = 0;
+let ewInitialSidebarWidth = 0, ewInitialSidebarHeight = 0;
+let ewInitialSidebarLeft = 0; // Only needed for 'left' resize
+
+const EW_SIDEBAR_MIN_WIDTH = 200; // px
+const EW_SIDEBAR_MAX_WIDTH = 800; // px
+const EW_SIDEBAR_MIN_HEIGHT = 150; // px
+// Calculate MAX_HEIGHT dynamically, e.g., in createSidebar or when resizing starts
+let EW_SIDEBAR_MAX_HEIGHT = 600; // Default, will be updated
 // let keyBuffer = ""; // REMOVED
 // let keyDebounceTimer = null; // REMOVED
 
@@ -229,6 +241,112 @@ function applyFontSize(multiplier) {
   }
   // Future: Could adjust line-height or other elements here too if needed
 }
+
+function applyDefaultDimensions() {
+  if (sidebar) {
+    sidebar.style.width = '280px'; // Default width from CSS
+    sidebar.style.height = 'auto';  // Default height behavior
+    // sidebar.style.left = 'auto'; // Let draggable handle this if not set
+    // sidebar.style.right = '0px'; // Default position from CSS
+    console.log("EW: Applied default sidebar dimensions.");
+  }
+}
+
+// Resize Sidebar Functions
+function ewOnResizeMouseDown(event) {
+  if (event.button !== 0 || !sidebar) return; // Only left mouse button and if sidebar exists
+
+  isEwResizing = true;
+  ewResizeType = event.target.dataset.resizeType; 
+  
+  ewResizeStartX = event.clientX;
+  ewResizeStartY = event.clientY;
+  
+  ewInitialSidebarWidth = sidebar.offsetWidth;
+  ewInitialSidebarHeight = sidebar.offsetHeight;
+  // For 'left' resizing, we need the initial 'left' CSS value (or calculated if 'auto')
+  // and initial 'right' CSS value to correctly adjust width and left.
+  // getComputedStyle is more reliable for 'auto' or complex values.
+  const computedStyle = window.getComputedStyle(sidebar);
+  ewInitialSidebarLeft = parseFloat(computedStyle.left) || 0; // Use 0 if 'auto' or not parseable
+
+  // Update max height based on current viewport
+  EW_SIDEBAR_MAX_HEIGHT = Math.floor(window.innerHeight * 0.9);
+
+  document.documentElement.style.userSelect = 'none';
+  document.documentElement.addEventListener('mousemove', ewOnResizeMouseMove, { passive: false });
+  document.documentElement.addEventListener('mouseup', ewOnResizeMouseUp, { once: true });
+  event.preventDefault();
+}
+
+function ewOnResizeMouseMove(event) {
+  if (!isEwResizing || !sidebar) return;
+  event.preventDefault();
+
+  const dx = event.clientX - ewResizeStartX;
+  const dy = event.clientY - ewResizeStartY;
+
+  if (ewResizeType === 'left') {
+    let newWidth = ewInitialSidebarWidth - dx;
+    
+    // Apply constraints
+    newWidth = Math.max(EW_SIDEBAR_MIN_WIDTH, Math.min(newWidth, EW_SIDEBAR_MAX_WIDTH));
+    
+    const widthChange = ewInitialSidebarWidth - newWidth;
+    let newLeft = ewInitialSidebarLeft + widthChange;
+
+    // Boundary check for left position (don't go off-screen left)
+    newLeft = Math.max(0, newLeft);
+    // Boundary check for right position (don't go off-screen right due to width change)
+    if (newLeft + newWidth > window.innerWidth) {
+      newLeft = window.innerWidth - newWidth; // Adjust left to keep right edge within viewport
+      // Recalculate newWidth if newLeft was capped, to ensure it doesn't exceed max width or viewport
+      newWidth = window.innerWidth - newLeft;
+      newWidth = Math.max(EW_SIDEBAR_MIN_WIDTH, Math.min(newWidth, EW_SIDEBAR_MAX_WIDTH));
+    }
+
+
+    sidebar.style.width = newWidth + 'px';
+    sidebar.style.left = newLeft + 'px';
+    sidebar.style.right = 'auto'; // Ensure left positioning takes precedence
+  } else if (ewResizeType === 'bottom') {
+    let newHeight = ewInitialSidebarHeight + dy;
+    newHeight = Math.max(EW_SIDEBAR_MIN_HEIGHT, Math.min(newHeight, EW_SIDEBAR_MAX_HEIGHT));
+    sidebar.style.height = newHeight + 'px';
+  }
+}
+
+function ewOnResizeMouseUp(event) {
+  if (!isEwResizing || !sidebar) return;
+  isEwResizing = false;
+
+  document.documentElement.style.userSelect = 'auto';
+  document.documentElement.removeEventListener('mousemove', ewOnResizeMouseMove);
+
+  const finalWidth = sidebar.style.width;
+  const finalHeight = sidebar.style.height;
+  const finalLeft = sidebar.style.left; 
+
+  let dimensionsToSave = {};
+  if (finalWidth && finalWidth !== 'auto') dimensionsToSave.ewSidebarWidth = finalWidth;
+  if (finalHeight && finalHeight !== 'auto') dimensionsToSave.ewSidebarHeight = finalHeight;
+  // Only save 'left' if it was actively changed during a 'left' resize
+  if (ewResizeType === 'left' && finalLeft && finalLeft !== 'auto') {
+     dimensionsToSave.ewSidebarLeft = finalLeft;
+  }
+
+  if (Object.keys(dimensionsToSave).length > 0 && chrome.runtime?.id) {
+    chrome.storage.local.set(dimensionsToSave, () => {
+      if (chrome.runtime.lastError) {
+        console.error("EW: Error saving sidebar dimensions:", chrome.runtime.lastError.message);
+      } else {
+        console.log("EW: Sidebar dimensions saved:", dimensionsToSave);
+      }
+    });
+  }
+  ewResizeType = ''; 
+}
+
 
 // Drag and Drop Sidebar Functions
 function ewOnMouseDown(event) {
@@ -475,6 +593,23 @@ function createSidebar() {
   });
   sidebar.appendChild(copyButton);
 
+  // Create resize handles
+  const resizeHandleLeft = document.createElement('div');
+  resizeHandleLeft.id = 'ew-resize-handle-left';
+  resizeHandleLeft.dataset.resizeType = 'left'; // Store type for event handler
+
+  const resizeHandleBottom = document.createElement('div');
+  resizeHandleBottom.id = 'ew-resize-handle-bottom';
+  resizeHandleBottom.dataset.resizeType = 'bottom'; // Store type for event handler
+  
+  // Append handles to the sidebar
+  sidebar.appendChild(resizeHandleLeft);
+  sidebar.appendChild(resizeHandleBottom);
+
+  // Attach mousedown listeners for resizing
+  if (resizeHandleLeft) resizeHandleLeft.addEventListener('mousedown', ewOnResizeMouseDown);
+  if (resizeHandleBottom) resizeHandleBottom.addEventListener('mousedown', ewOnResizeMouseDown);
+  
   document.body.appendChild(sidebar);
 
   // Restore sidebar state
@@ -528,6 +663,51 @@ function createSidebar() {
       console.warn("EW: Sidebar not available to restore position (at restore code block).");
   } else {
       console.warn("EW: Context invalidated, cannot restore sidebar position (at restore code block).");
+  }
+
+  // Restore sidebar dimensions (width, height)
+  if (chrome.runtime?.id && sidebar) { 
+    chrome.storage.local.get(['ewSidebarWidth', 'ewSidebarHeight'], (result) => {
+      if (chrome.runtime.lastError) {
+        console.error("EW: Error loading sidebar dimensions:", chrome.runtime.lastError.message);
+        applyDefaultDimensions(); 
+        return;
+      }
+      
+      let dimensionsRestored = false;
+      if (result.ewSidebarWidth) {
+        const newWidth = parseFloat(result.ewSidebarWidth);
+        if (!isNaN(newWidth) && newWidth >= EW_SIDEBAR_MIN_WIDTH && newWidth <= EW_SIDEBAR_MAX_WIDTH) {
+          sidebar.style.width = newWidth + 'px';
+          dimensionsRestored = true;
+          console.log("EW: Restored sidebar width:", newWidth + 'px');
+        }
+      }
+      if (result.ewSidebarHeight) {
+        const newHeight = parseFloat(result.ewSidebarHeight);
+        const currentMaxHeight = Math.floor(window.innerHeight * 0.9); // Recalculate or use EW_SIDEBAR_MAX_HEIGHT
+        if (!isNaN(newHeight) && newHeight >= EW_SIDEBAR_MIN_HEIGHT && newHeight <= currentMaxHeight) {
+          sidebar.style.height = newHeight + 'px';
+          dimensionsRestored = true;
+          console.log("EW: Restored sidebar height:", newHeight + 'px');
+        }
+      }
+
+      if (dimensionsRestored) {
+          console.log("EW: Sidebar dimensions restored.");
+      } else {
+          console.log("EW: No saved sidebar dimensions found/applied, using defaults or CSS.");
+          // Apply default only if nothing was restored, to avoid overriding a single restored dimension
+          if (!result.ewSidebarWidth && !result.ewSidebarHeight) {
+            applyDefaultDimensions();
+          }
+      }
+    });
+  } else if (!sidebar) {
+      console.warn("EW: Sidebar not available to restore dimensions (at dimension restore block).");
+  } else {
+      console.warn("EW: Context invalidated, cannot restore sidebar dimensions (at dimension restore block).");
+      applyDefaultDimensions(); 
   }
 }
 
