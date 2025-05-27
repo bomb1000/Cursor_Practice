@@ -525,13 +525,82 @@ function createSidebar() {
   sidebarToggle.textContent = '>'; // Indicate it can be expanded
 
   sidebarToggle.addEventListener('click', () => {
-    sidebar.classList.toggle('ew-sidebar-collapsed');
-    sidebarToggle.textContent = sidebar.classList.contains('ew-sidebar-collapsed') ? '>' : '<';
-    // Store sidebar state
+    const isCurrentlyCollapsed = sidebar.classList.contains('ew-sidebar-collapsed');
+    const currentTop = sidebar.style.top || window.getComputedStyle(sidebar).top || '20%'; 
+
+    if (isCurrentlyCollapsed) { // EXPANDING
+      // 1. Remove class (this will start the transition if any styles change immediately)
+      sidebar.classList.remove('ew-sidebar-collapsed');
+      // 2. Set toggle text
+      sidebarToggle.textContent = '<';
+      // 3. Retrieve and apply stored position or default
+      if (chrome.runtime?.id) {
+        chrome.storage.local.get(['ewSidebarLastDraggedLeft', 'ewSidebarLastDraggedTop'], (result) => {
+          if (chrome.runtime.lastError) {
+            console.error("EW: Error getting last dragged pos for expand:", chrome.runtime.lastError.message);
+            sidebar.style.left = 'auto';
+            sidebar.style.right = '0px';
+            sidebar.style.top = '20%'; // Default top
+            return;
+          }
+          if (result.ewSidebarLastDraggedLeft && result.ewSidebarLastDraggedTop) {
+            console.log("EW: Restoring last dragged position on expand:", result);
+            sidebar.style.left = result.ewSidebarLastDraggedLeft;
+            sidebar.style.top = result.ewSidebarLastDraggedTop;
+            sidebar.style.right = 'auto'; // Override default CSS 'right:0'
+          } else {
+            console.log("EW: No last dragged position found, defaulting to right edge on expand.");
+            sidebar.style.left = 'auto';
+            sidebar.style.right = '0px';
+            sidebar.style.top = '20%'; // Default top from CSS
+          }
+        });
+      } else {
+        console.warn("EW: Context invalidated, defaulting sidebar position on expand.");
+        sidebar.style.left = 'auto';
+        sidebar.style.right = '0px';
+        sidebar.style.top = '20%'; // Default top
+      }
+    } else { // COLLAPSING
+      // 1. Check if sidebar.style.left is set and not 'auto', indicating it has been dragged.
+      if (sidebar.style.left && sidebar.style.left !== 'auto') {
+        if (chrome.runtime?.id) {
+          chrome.storage.local.set({ 
+            ewSidebarLastDraggedLeft: sidebar.style.left, 
+            ewSidebarLastDraggedTop: sidebar.style.top 
+          }, () => { 
+            if (chrome.runtime.lastError) console.error("EW: Error saving last dragged pos:", chrome.runtime.lastError.message); 
+            else console.log("EW: Saved last dragged position:", {left: sidebar.style.left, top: sidebar.style.top});
+          });
+        }
+      } else {
+        // 2. If not dragged (or already at default edge), explicitly clear any stored drag position
+        if (chrome.runtime?.id) {
+          chrome.storage.local.remove(['ewSidebarLastDraggedLeft', 'ewSidebarLastDraggedTop'], () => {
+             if (chrome.runtime.lastError) console.error("EW: Error clearing last dragged pos:", chrome.runtime.lastError.message);
+             else console.log("EW: Sidebar was at default right edge, cleared stored drag pos.");
+          });
+        }
+      }
+      
+      // 3. Prepare for collapse: ensure it's positioned at the right edge for the transform.
+      sidebar.style.left = 'auto';
+      sidebar.style.right = '0px'; 
+      sidebar.style.top = currentTop; // Ensure top is explicitly set based on its value before collapse starts
+      
+      // 4. Add class to trigger collapse animation
+      sidebar.classList.add('ew-sidebar-collapsed');
+      // 5. Set toggle text
+      sidebarToggle.textContent = '>';
+    }
+
+    // Store sidebar collapsed state (boolean)
     if (chrome.runtime?.id) {
-      chrome.storage.local.set({ sidebarCollapsed: sidebar.classList.contains('ew-sidebar-collapsed') });
+      chrome.storage.local.set({ sidebarCollapsed: sidebar.classList.contains('ew-sidebar-collapsed') }, () => {
+         if (chrome.runtime.lastError) console.error("EW: Error saving sidebar collapsed state:", chrome.runtime.lastError.message);
+      });
     } else {
-      console.log("EW: Context invalidated, cannot save sidebar state.");
+      console.warn("EW: Context invalidated, cannot save sidebar collapsed state.");
     }
   });
 
