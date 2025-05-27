@@ -2,9 +2,14 @@
 let sidebar = null;
 let sidebarContent = null;
 let sidebarToggle = null;
+let ewSidebarHeader = null; // ADDED
 let isExtensionEnabled = true;
 let ewFontSizeMultiplier = 1.0; 
 const EW_BASE_FONT_SIZE = 14; // Assuming base font size in px for sidebar content
+
+let isEwDragging = false;
+let ewDragStartX = 0, ewDragStartY = 0;
+let ewSidebarInitialX = 0, ewSidebarInitialY = 0;
 // let keyBuffer = ""; // REMOVED
 // let keyDebounceTimer = null; // REMOVED
 
@@ -225,6 +230,75 @@ function applyFontSize(multiplier) {
   // Future: Could adjust line-height or other elements here too if needed
 }
 
+// Drag and Drop Sidebar Functions
+function ewOnMouseDown(event) {
+  if (event.button !== 0 || !sidebar) return; // Only react to left mouse button and if sidebar exists
+
+  isEwDragging = true;
+  ewDragStartX = event.clientX;
+  ewDragStartY = event.clientY;
+  
+  const sidebarRect = sidebar.getBoundingClientRect();
+  ewSidebarInitialX = sidebarRect.left;
+  ewSidebarInitialY = sidebarRect.top;
+
+  // Apply dragging styles and listeners
+  sidebar.style.userSelect = 'none'; // Prevent text selection on the sidebar itself
+  document.documentElement.style.userSelect = 'none'; // Prevent text selection on the page
+  
+  // Use non-passive listeners to allow preventDefault
+  document.documentElement.addEventListener('mousemove', ewOnMouseMove, { passive: false });
+  document.documentElement.addEventListener('mouseup', ewOnMouseUp, { once: true }); 
+  
+  event.preventDefault(); // Prevent default drag behaviors or text selection on the header
+}
+
+function ewOnMouseMove(event) {
+  if (!isEwDragging || !sidebar) return;
+  event.preventDefault(); // Essential for smooth dragging
+
+  let dx = event.clientX - ewDragStartX;
+  let dy = event.clientY - ewDragStartY;
+
+  let newLeft = ewSidebarInitialX + dx;
+  let newTop = ewSidebarInitialY + dy;
+
+  // Boundary Checks
+  const sidebarWidth = sidebar.offsetWidth;
+  const sidebarHeight = sidebar.offsetHeight;
+  newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - sidebarWidth));
+  newTop = Math.max(0, Math.min(newTop, window.innerHeight - sidebarHeight));
+
+  sidebar.style.left = newLeft + 'px';
+  sidebar.style.top = newTop + 'px';
+  sidebar.style.right = 'auto';  // Override initial 'right:0' CSS if it was used
+  sidebar.style.bottom = 'auto'; // In case it was positioned with bottom
+}
+
+function ewOnMouseUp(event) {
+  if (!isEwDragging || !sidebar) return; // Check if still dragging and sidebar exists
+  isEwDragging = false;
+  
+  sidebar.style.userSelect = 'auto';
+  document.documentElement.style.userSelect = 'auto';
+  document.documentElement.removeEventListener('mousemove', ewOnMouseMove);
+  // mouseup listener is auto-removed due to {once: true}
+
+  // Save Position
+  const finalTop = sidebar.style.top;
+  const finalLeft = sidebar.style.left;
+
+  if (chrome.runtime?.id) {
+    chrome.storage.local.set({ ewSidebarTop: finalTop, ewSidebarLeft: finalLeft }, () => {
+      if (chrome.runtime.lastError) {
+        console.error("EW: Error saving sidebar position:", chrome.runtime.lastError.message);
+      } else {
+        console.log("EW: Sidebar position saved:", {top: finalTop, left: finalLeft});
+      }
+    });
+  }
+}
+
 
 // Remove UI elements and event listeners
 function removeUI() {
@@ -233,14 +307,12 @@ function removeUI() {
     sidebar = null;
     sidebarContent = null;
     sidebarToggle = null;
+    ewSidebarHeader = null; // Clear header reference
   }
-  // REMOVED global key listener detachment and timer/buffer clearing
-  // if (document.ewKeydownListenerAttached) {
-  //   document.removeEventListener('keydown', handleGlobalKeyDown);
-  //   document.ewKeydownListenerAttached = false;
-  // }
-  // clearTimeout(keyDebounceTimer);
-  // keyBuffer = ""; 
+  // Clean up global mouse listeners if any were somehow left attached (though mouseup should handle it)
+  document.documentElement.removeEventListener('mousemove', ewOnMouseMove);
+  document.documentElement.removeEventListener('mouseup', ewOnMouseUp);
+  document.documentElement.style.userSelect = 'auto'; // Ensure text selection is re-enabled
 }
 
 // DELETED handleGlobalKeyDown function
@@ -349,10 +421,15 @@ function createSidebar() {
   sidebarContent.id = 'ew-sidebar-content';
   sidebarContent.textContent = '...'; // Initial text
 
-  const sidebarHeader = document.createElement('h4');
-  sidebarHeader.textContent = "英文寫法";
-  sidebarHeader.style.margin = "0 0 10px 0";
-  sidebarHeader.style.padding = "0";
+  const localSidebarHeader = document.createElement('h4'); // Renamed to avoid conflict if global is accessed before assignment
+  localSidebarHeader.id = 'ew-sidebar-header'; // ADDED ID
+  localSidebarHeader.textContent = "英文寫法";
+  localSidebarHeader.style.margin = "0 0 10px 0";
+  localSidebarHeader.style.padding = "0";
+  ewSidebarHeader = localSidebarHeader; // ASSIGNED to global
+  if (ewSidebarHeader) { // Attach mousedown listener for dragging
+    ewSidebarHeader.addEventListener('mousedown', ewOnMouseDown);
+  }
 
   const fontControlsContainer = document.createElement('div');
   fontControlsContainer.id = 'ew-font-controls';
@@ -373,7 +450,7 @@ function createSidebar() {
   shortcutDisplay.textContent = 'Shortcut: ...'; // Placeholder, updated by initializeUI
 
   sidebar.appendChild(sidebarToggle);
-  sidebar.appendChild(sidebarHeader);
+  sidebar.appendChild(ewSidebarHeader); // Use the global (now assigned) variable
   sidebar.appendChild(fontControlsContainer); // Added font controls
   sidebar.appendChild(shortcutDisplay); 
   sidebar.appendChild(sidebarContent);
@@ -417,6 +494,40 @@ function createSidebar() {
     });
   } else {
     console.log("EW: Context invalidated, cannot restore sidebar state.");
+  }
+
+  // Restore sidebar position
+  if (chrome.runtime?.id && sidebar) { // Ensure sidebar exists and context is valid
+    chrome.storage.local.get(['ewSidebarTop', 'ewSidebarLeft'], (result) => {
+      if (chrome.runtime.lastError) {
+        console.error("EW: Error loading sidebar position:", chrome.runtime.lastError.message);
+        return;
+      }
+      
+      let restored = false;
+      if (result.ewSidebarLeft && result.ewSidebarLeft !== 'auto') { // Check if a valid 'left' was stored
+        sidebar.style.left = result.ewSidebarLeft;
+        sidebar.style.right = 'auto'; // Important: override initial 'right:0'
+        restored = true;
+        console.log("EW: Restored sidebar left:", result.ewSidebarLeft);
+      }
+      if (result.ewSidebarTop && result.ewSidebarTop !== 'auto') { // Check if a valid 'top' was stored
+        sidebar.style.top = result.ewSidebarTop;
+        sidebar.style.bottom = 'auto'; // Important: override initial 'bottom' if it was ever used
+        restored = true;
+        console.log("EW: Restored sidebar top:", result.ewSidebarTop);
+      }
+
+      if (restored) {
+          console.log("EW: Sidebar position restored.");
+      } else {
+          console.log("EW: No saved sidebar position found or applied, relying on CSS defaults.");
+      }
+    });
+  } else if (!sidebar) {
+      console.warn("EW: Sidebar not available to restore position (at restore code block).");
+  } else {
+      console.warn("EW: Context invalidated, cannot restore sidebar position (at restore code block).");
   }
 }
 
