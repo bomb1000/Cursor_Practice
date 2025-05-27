@@ -9,6 +9,24 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({ error: error.message || 'Translation failed' });
       });
     return true; // 表示我們將異步發送響應
+  } else if (request.type === 'GET_SHORTCUT_INFO') {
+    console.log("EW_BACKGROUND: Received GET_SHORTCUT_INFO request.");
+    chrome.commands.getAll(commands => {
+      if (chrome.runtime.lastError) {
+        console.error("EW_BACKGROUND: Error getting commands:", chrome.runtime.lastError.message);
+        sendResponse({ shortcut: "Error: Could not retrieve shortcuts" });
+        return;
+      }
+      const translateCmd = commands.find(cmd => cmd.name === "translate-selection");
+      if (translateCmd) {
+        console.log("EW_BACKGROUND: Sending 'translate-selection' shortcut:", translateCmd.shortcut);
+        sendResponse({ shortcut: translateCmd.shortcut || "N/A" }); // "N/A" if user cleared it
+      } else {
+        console.error("EW_BACKGROUND: 'translate-selection' command not found.");
+        sendResponse({ shortcut: "Error: Command not found" });
+      }
+    });
+    return true; // Important for async response
   }
 });
 

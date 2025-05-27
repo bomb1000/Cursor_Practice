@@ -3,6 +3,8 @@ let sidebar = null;
 let sidebarContent = null;
 let sidebarToggle = null;
 let isExtensionEnabled = true;
+let ewFontSizeMultiplier = 1.0; 
+const EW_BASE_FONT_SIZE = 14; // Assuming base font size in px for sidebar content
 // let keyBuffer = ""; // REMOVED
 // let keyDebounceTimer = null; // REMOVED
 
@@ -121,14 +123,108 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // Initialize UI elements and event listeners
 function initializeUI() {
   if (!document.getElementById('ew-sidebar')) {
-    createSidebar();
+    createSidebar(); 
+  } else {
+    // If sidebar exists, ensure font controls are there or re-add them,
+    // and re-attach listeners. This can happen if the script is re-injected.
+    if (!document.getElementById('ew-font-controls')) {
+        // This is a simplified case; ideally, createSidebar would be idempotent
+        // or we'd have a separate function to ensure UI elements.
+        // For now, assume createSidebar being called again is okay or handled.
+        // Alternatively, directly add font controls if sidebar exists but they don't.
+    }
   }
-  // REMOVED global key listener attachment
-  // if (!document.ewKeydownListenerAttached) {
-  //   document.addEventListener('keydown', handleGlobalKeyDown);
-  //   document.ewKeydownListenerAttached = true;
-  // }
+  
+  // Attach listeners to font controls
+  const fontDecreaseButton = document.getElementById('ew-font-decrease');
+  const fontIncreaseButton = document.getElementById('ew-font-increase');
+
+  if (fontDecreaseButton) {
+    fontDecreaseButton.addEventListener('click', () => {
+      ewFontSizeMultiplier -= 0.1;
+      if (ewFontSizeMultiplier < 0.7) ewFontSizeMultiplier = 0.7; // Min limit
+      applyFontSize(ewFontSizeMultiplier);
+      if (chrome.runtime?.id) chrome.storage.local.set({ fontSizeMultiplier: ewFontSizeMultiplier });
+    });
+  }
+
+  if (fontIncreaseButton) {
+    fontIncreaseButton.addEventListener('click', () => {
+      ewFontSizeMultiplier += 0.1;
+      if (ewFontSizeMultiplier > 2.0) ewFontSizeMultiplier = 2.0; // Max limit
+      applyFontSize(ewFontSizeMultiplier);
+      if (chrome.runtime?.id) chrome.storage.local.set({ fontSizeMultiplier: ewFontSizeMultiplier });
+    });
+  }
+
+  // Load and Apply Initial Font Size
+  if (chrome.runtime?.id) {
+    chrome.storage.local.get('fontSizeMultiplier', (result) => {
+      if (chrome.runtime.lastError) {
+        console.error("EW: Error loading fontSizeMultiplier", chrome.runtime.lastError.message);
+        applyFontSize(ewFontSizeMultiplier); // Apply default
+        return;
+      }
+      if (result.fontSizeMultiplier) {
+        let loadedMultiplier = parseFloat(result.fontSizeMultiplier);
+        if (isNaN(loadedMultiplier) || loadedMultiplier < 0.7 || loadedMultiplier > 2.0) {
+           ewFontSizeMultiplier = 1.0; // Reset if invalid
+        } else {
+           ewFontSizeMultiplier = loadedMultiplier;
+        }
+      }
+      applyFontSize(ewFontSizeMultiplier);
+    });
+  } else {
+    applyFontSize(ewFontSizeMultiplier); // Apply default if context invalid
+  }
+
+  // Request shortcut info
+  if (chrome.runtime?.id) { 
+    console.log("EW: content.js sending GET_SHORTCUT_INFO to background.");
+    chrome.runtime.sendMessage({ type: "GET_SHORTCUT_INFO" }, (response) => {
+      const shortcutDiv = document.getElementById('ew-shortcut-display');
+      if (!shortcutDiv) { 
+          console.warn("EW: Shortcut display div not found when trying to set shortcut text.");
+          return;
+      }
+      if (chrome.runtime.lastError) {
+        console.error("EW: Error getting shortcut info:", chrome.runtime.lastError.message);
+        shortcutDiv.textContent = 'Shortcut: Error';
+        return;
+      }
+      if (response && response.shortcut) {
+        console.log("EW: content.js received shortcut info:", response.shortcut);
+        shortcutDiv.textContent = `Shortcut: ${response.shortcut}`; 
+      } else {
+        console.log("EW: content.js received no shortcut info or error in response. Response:", response);
+        shortcutDiv.textContent = 'Shortcut: N/A';
+      }
+    });
+  } else {
+    console.warn("EW: Context invalidated, cannot request shortcut info.");
+    const shortcutDiv = document.getElementById('ew-shortcut-display');
+    if (sidebar && shortcutDiv) { 
+        shortcutDiv.textContent = 'Shortcut: N/A';
+    } else if (document.getElementById('ew-sidebar') && !shortcutDiv) {
+        console.warn("EW: Sidebar exists but shortcut display div not found during context invalidation fallback.");
+    }
+  }
 }
+
+// Apply font size to relevant elements
+function applyFontSize(multiplier) {
+  if (sidebarContent) {
+    sidebarContent.style.fontSize = `${EW_BASE_FONT_SIZE * multiplier}px`;
+  }
+  const shortcutDisplay = document.getElementById('ew-shortcut-display');
+  if (shortcutDisplay) {
+    // Adjust shortcut display font size proportionally or keep it smaller
+    shortcutDisplay.style.fontSize = `${(EW_BASE_FONT_SIZE - 2) * multiplier}px`; // e.g., base 12px
+  }
+  // Future: Could adjust line-height or other elements here too if needed
+}
+
 
 // Remove UI elements and event listeners
 function removeUI() {
@@ -258,8 +354,28 @@ function createSidebar() {
   sidebarHeader.style.margin = "0 0 10px 0";
   sidebarHeader.style.padding = "0";
 
+  const fontControlsContainer = document.createElement('div');
+  fontControlsContainer.id = 'ew-font-controls';
+
+  const fontDecreaseButton = document.createElement('button');
+  fontDecreaseButton.id = 'ew-font-decrease';
+  fontDecreaseButton.textContent = 'A-';
+
+  const fontIncreaseButton = document.createElement('button');
+  fontIncreaseButton.id = 'ew-font-increase';
+  fontIncreaseButton.textContent = 'A+';
+
+  fontControlsContainer.appendChild(fontDecreaseButton);
+  fontControlsContainer.appendChild(fontIncreaseButton);
+
+  const shortcutDisplay = document.createElement('div');
+  shortcutDisplay.id = 'ew-shortcut-display';
+  shortcutDisplay.textContent = 'Shortcut: ...'; // Placeholder, updated by initializeUI
+
   sidebar.appendChild(sidebarToggle);
   sidebar.appendChild(sidebarHeader);
+  sidebar.appendChild(fontControlsContainer); // Added font controls
+  sidebar.appendChild(shortcutDisplay); 
   sidebar.appendChild(sidebarContent);
 
   const copyButton = document.createElement('button');
