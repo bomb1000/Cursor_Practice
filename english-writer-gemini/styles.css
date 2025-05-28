@@ -35,11 +35,11 @@
   padding-left: 25px; /* Space for the toggle button */
   box-sizing: border-box;
   transition: transform 0.3s ease-in-out;
-  overflow-y: auto;
-  overflow-x: hidden; /* Prevent horizontal scrollbar due to content */
-  overflow: visible; /* Allow handles to be slightly outside */
+  overflow-x: hidden; /* Prevent horizontal scrollbar due to content, allow vertical by children */
   font-size: 14px;
   line-height: 1.6;
+  display: flex;
+  flex-direction: column;
 }
 
 #ew-sidebar.ew-sidebar-collapsed {
@@ -74,10 +74,44 @@
   background-color: #e0e0e0;
 }
 
+#ew-sidebar-header { /* Styling the H4 drag handle */
+  cursor: move;
+  user-select: none;
+  flex-shrink: 0; /* Prevent shrinking */
+  /* Ensure existing margin/padding from inline styles in JS are respected or moved here if preferred */
+  /* For example, if h4 had style.margin = "0 0 10px 0", that still applies */
+}
+
+#ew-font-controls {
+  display: flex;
+  justify-content: space-between; /* Or 'center', 'flex-end' */
+  align-items: center;
+  padding: 4px 0;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #eee;
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
+#ew-shortcut-display {
+  font-size: 0.8em; /* Smaller than main text */
+  color: #555555;  /* Grey color */
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #eee; /* Subtle separator */
+  text-align: center; /* Or as preferred */
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
 #ew-sidebar-content {
-  word-wrap: break-word;
-  white-space: pre-wrap;
+  word-wrap: break-word; /* Alias for overflow-wrap */
+  overflow-wrap: break-word;
+  white-space: pre-wrap; 
+  word-break: break-word; /* More aggressive breaking */
   margin-bottom: 10px; /* Add some space before the copy button */
+  flex-grow: 1; /* Allow this to take up remaining vertical space */
+  overflow-y: auto; /* Enable vertical scrollbar if content overflows */
+  min-height: 50px; /* Minimum height for the content area, e.g., 3em or 2-3 lines */
+  padding: 5px; /* Add some internal padding */
 } 
 
 #ew-copy-button {
@@ -87,13 +121,14 @@
   padding: 8px 12px;
   text-align: center;
   text-decoration: none;
-  display: inline-block; /* Changed from block to inline-block if needed, or keep as block/flex */
+  display: block; /* Ensure it takes full width in flex flow */
   font-size: 13px;
   border-radius: 4px;
   cursor: pointer;
-  margin-top: 5px; /* Space from content above */
-  width: 100%; /* Make button full width */
-  box-sizing: border-box; /* Include padding and border in the element's total width and height */
+  margin-top: auto; /* Pushes to bottom if sidebar has extra space, or use specific margin if preferred */
+  width: 100%; 
+  box-sizing: border-box; 
+  flex-shrink: 0; /* Prevent shrinking */
 }
 
 #ew-copy-button:hover {
@@ -132,34 +167,27 @@
   padding-bottom: 5px;
   border-bottom: 1px solid #eee; /* Subtle separator */
   text-align: center; /* Or as preferred */
+  flex-shrink: 0; /* Prevent shrinking */
 }
 
-#ew-sidebar-header { /* Styling the H4 drag handle */
-  cursor: move;
-  user-select: none;
-  /* Ensure existing margin/padding from inline styles in JS are respected or moved here if preferred */
-  /* For example, if h4 had style.margin = "0 0 10px 0", that still applies */
-}
+/* Redundant #ew-shortcut-display removed by not re-adding it. The one above is kept. */
 
-#ew-font-controls {
-  display: flex;
-  justify-content: space-between; /* Or 'center', 'flex-end' */
-  align-items: center;
-  padding: 4px 0;
-  margin-bottom: 8px;
-  border-bottom: 1px solid #eee;
-}
+/* #ew-sidebar-header is already defined above with flex-shrink:0 */
+
+/* #ew-font-controls is already defined above with flex-shrink:0 */
 
 #ew-font-decrease, #ew-font-increase {
   padding: 2px 8px;
   font-size: 0.9em;
-  background-color: #e9e9e9;
-  border: 1px solid #ccc;
+  background-color: #e0e0e0; /* Light gray background for buttons */
+  color: #333333;           /* Dark text for buttons */
+  border: 1px solid #ababab; /* Slightly darker border for definition */
   border-radius: 4px;
   cursor: pointer;
 }
 #ew-font-decrease:hover, #ew-font-increase:hover {
-  background-color: #dcdcdc;
+  background-color: #d0d0d0; /* Slightly darker on hover */
+  border-color: #9a9a9a;
 }
 
 /* Resize Handles */
