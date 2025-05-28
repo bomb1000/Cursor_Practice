@@ -1,3 +1,4 @@
+console.log("EW_CONTENT: Script started injecting/running. Timestamp:", Date.now());
 // Global variables
 let sidebar = null;
 let sidebarContent = null;
@@ -43,9 +44,10 @@ if (chrome.runtime?.id) {
 }
 
 // Listen for messages from popup or background
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.type === 'TOGGLE_ENABLED') {
-    isExtensionEnabled = request.enabled;
+try {
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.type === 'TOGGLE_ENABLED') {
+      isExtensionEnabled = request.enabled;
     if (isExtensionEnabled) {
       initializeUI();
       if (sidebar) sidebar.style.display = 'block'; // Show sidebar if it exists
@@ -136,69 +138,73 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
   return true; // Indicates asynchronous response
 });
+  console.log("EW_CONTENT: Message listener attached successfully. Timestamp:", Date.now());
+} catch (e) {
+  console.error("EW_CONTENT: Error attaching message listener:", e);
+}
 
 // Initialize UI elements and event listeners
 function initializeUI() {
+  console.log("EW_CONTENT: initializeUI called. Timestamp:", Date.now());
   if (!document.getElementById('ew-sidebar')) {
     createSidebar(); 
   } else {
-    // If sidebar exists, ensure font controls are there or re-add them,
-    // and re-attach listeners. This can happen if the script is re-injected.
-    if (!document.getElementById('ew-font-controls')) {
-        // This is a simplified case; ideally, createSidebar would be idempotent
-        // or we'd have a separate function to ensure UI elements.
-        // For now, assume createSidebar being called again is okay or handled.
-        // Alternatively, directly add font controls if sidebar exists but they don't.
+    // If sidebar exists, ensure font controls are there or re-add them.
+    // This can happen if the script is re-injected.
+    // Also, ensure event listeners for font controls are re-attached if necessary.
+    if (!document.getElementById('ew-font-controls') && sidebar) {
+        const fontControlsContainer = document.createElement('div');
+        fontControlsContainer.id = 'ew-font-controls';
+        const newFontDecreaseButton = document.createElement('button'); // Use new var names
+        newFontDecreaseButton.id = 'ew-font-decrease';
+        newFontDecreaseButton.textContent = 'A-';
+        const newFontIncreaseButton = document.createElement('button'); // Use new var names
+        newFontIncreaseButton.id = 'ew-font-increase';
+        newFontIncreaseButton.textContent = 'A+';
+        fontControlsContainer.appendChild(newFontDecreaseButton);
+        fontControlsContainer.appendChild(newFontIncreaseButton);
+        
+        const shortcutDisplay = document.getElementById('ew-shortcut-display');
+        if (shortcutDisplay) {
+            sidebar.insertBefore(fontControlsContainer, shortcutDisplay);
+        } else if (sidebarContent) {
+            sidebar.insertBefore(fontControlsContainer, sidebarContent);
+        } else {
+            sidebar.appendChild(fontControlsContainer);
+        }
+        // Re-attach listeners specifically for newly created buttons
+        newFontDecreaseButton.addEventListener('click', handleFontDecrease);
+        newFontDecreaseButton.ewListenerAttached = true; 
+        newFontIncreaseButton.addEventListener('click', handleFontIncrease);
+        newFontIncreaseButton.ewListenerAttached = true;
     }
   }
-  
-  // Attach listeners to font controls
+
+  applyInitialSidebarStateAndSettings(); // Handles default position/dimensions, collapsed state, and font size.
+
+  // Attach listeners to font controls (if they were already there or just added)
+  // Ensure listeners are only attached once.
   const fontDecreaseButton = document.getElementById('ew-font-decrease');
   const fontIncreaseButton = document.getElementById('ew-font-increase');
 
-  if (fontDecreaseButton) {
+  if (fontDecreaseButton && !fontDecreaseButton.ewListenerAttached) {
     fontDecreaseButton.addEventListener('click', () => {
       ewFontSizeMultiplier -= 0.1;
       if (ewFontSizeMultiplier < 0.7) ewFontSizeMultiplier = 0.7; // Min limit
       applyFontSize(ewFontSizeMultiplier);
       if (chrome.runtime?.id) chrome.storage.local.set({ fontSizeMultiplier: ewFontSizeMultiplier });
     });
+    fontDecreaseButton.ewListenerAttached = true; 
   }
 
-  if (fontIncreaseButton) {
-    fontIncreaseButton.addEventListener('click', () => {
-      ewFontSizeMultiplier += 0.1;
-      if (ewFontSizeMultiplier > 2.0) ewFontSizeMultiplier = 2.0; // Max limit
-      applyFontSize(ewFontSizeMultiplier);
-      if (chrome.runtime?.id) chrome.storage.local.set({ fontSizeMultiplier: ewFontSizeMultiplier });
-    });
-  }
-
-  // Load and Apply Initial Font Size
-  if (chrome.runtime?.id) {
-    chrome.storage.local.get('fontSizeMultiplier', (result) => {
-      if (chrome.runtime.lastError) {
-        console.error("EW: Error loading fontSizeMultiplier", chrome.runtime.lastError.message);
-        applyFontSize(ewFontSizeMultiplier); // Apply default
-        return;
-      }
-      if (result.fontSizeMultiplier) {
-        let loadedMultiplier = parseFloat(result.fontSizeMultiplier);
-        if (isNaN(loadedMultiplier) || loadedMultiplier < 0.7 || loadedMultiplier > 2.0) {
-           ewFontSizeMultiplier = 1.0; // Reset if invalid
-        } else {
-           ewFontSizeMultiplier = loadedMultiplier;
-        }
-      }
-      applyFontSize(ewFontSizeMultiplier);
-    });
-  } else {
-    applyFontSize(ewFontSizeMultiplier); // Apply default if context invalid
+  if (fontIncreaseButton && !fontIncreaseButton.ewListenerAttached) {
+    fontIncreaseButton.addEventListener('click', handleFontIncrease);
+    fontIncreaseButton.ewListenerAttached = true; 
   }
 
   // Request shortcut info
   if (chrome.runtime?.id) { 
-    console.log("EW: content.js sending GET_SHORTCUT_INFO to background.");
+    console.log("EW_CONTENT: content.js sending GET_SHORTCUT_INFO to background.");
     chrome.runtime.sendMessage({ type: "GET_SHORTCUT_INFO" }, (response) => {
       const shortcutDiv = document.getElementById('ew-shortcut-display');
       if (!shortcutDiv) { 
@@ -242,15 +248,116 @@ function applyFontSize(multiplier) {
   // Future: Could adjust line-height or other elements here too if needed
 }
 
+// Helper for font decrease button click
+function handleFontDecrease() {
+    ewFontSizeMultiplier -= 0.1;
+    if (ewFontSizeMultiplier < 0.7) ewFontSizeMultiplier = 0.7; // Min limit
+    applyFontSize(ewFontSizeMultiplier);
+    if (chrome.runtime?.id) chrome.storage.local.set({ fontSizeMultiplier: ewFontSizeMultiplier });
+}
+
+// Helper for font increase button click
+function handleFontIncrease() {
+    ewFontSizeMultiplier += 0.1;
+    if (ewFontSizeMultiplier > 2.0) ewFontSizeMultiplier = 2.0; // Max limit
+    applyFontSize(ewFontSizeMultiplier);
+    if (chrome.runtime?.id) chrome.storage.local.set({ fontSizeMultiplier: ewFontSizeMultiplier });
+}
+
+
 function applyDefaultDimensions() {
   if (sidebar) {
-    sidebar.style.width = '280px'; // Default width from CSS
-    sidebar.style.height = 'auto';  // Default height behavior
-    // sidebar.style.left = 'auto'; // Let draggable handle this if not set
-    // sidebar.style.right = '0px'; // Default position from CSS
-    console.log("EW: Applied default sidebar dimensions.");
+    sidebar.style.width = ''; // Reset to allow CSS default (e.g., 280px)
+    sidebar.style.height = ''; // Reset to allow CSS default (e.g., auto)
+    sidebar.style.left = 'auto'; 
+    sidebar.style.right = '0px'; // Default position from CSS
+    sidebar.style.top = '20%';   // Default position from CSS
+    sidebar.style.bottom = 'auto';
+    console.log("EW_CONTENT: Applied default sidebar position and dimensions via CSS reset.");
   }
 }
+
+function applyInitialSidebarStateAndSettings() {
+  if (!sidebar) {
+    console.warn("EW_CONTENT: applyInitialSidebarState called but sidebar is null.");
+    return;
+  }
+
+  console.log("EW_CONTENT: Applying initial sidebar state and settings.");
+  // ALWAYS APPLY DEFAULT CSS POSITION AND DIMENSIONS ON INITIALIZATION
+  applyDefaultDimensions();
+
+  // Load and Apply Collapsed State
+  if (chrome.runtime?.id) {
+    chrome.storage.local.get('sidebarCollapsed', (result) => {
+      if (chrome.runtime.lastError) {
+        console.error("EW_CONTENT: Error loading sidebarCollapsed state:", chrome.runtime.lastError.message);
+        sidebar.classList.add('ew-sidebar-collapsed');
+        if (sidebarToggle) sidebarToggle.textContent = '>';
+        // Fallback for font size if storage fails for collapsed state
+        applyFontSize(ewFontSizeMultiplier); 
+        return;
+      }
+
+      let shouldBeCollapsed;
+      if (typeof result.sidebarCollapsed === 'undefined') {
+        console.log("EW_CONTENT: sidebarCollapsed not found in storage, defaulting to collapsed (true).");
+        shouldBeCollapsed = true;
+        if (chrome.runtime?.id) {
+          chrome.storage.local.set({ sidebarCollapsed: true }); // Save the default
+        }
+      } else {
+        shouldBeCollapsed = result.sidebarCollapsed;
+        console.log("EW_CONTENT: sidebarCollapsed loaded from storage:", shouldBeCollapsed);
+      }
+
+      if (shouldBeCollapsed) {
+        sidebar.classList.add('ew-sidebar-collapsed');
+        if (sidebarToggle) sidebarToggle.textContent = '>';
+        // Position is already default from applyDefaultDimensions
+      } else {
+        sidebar.classList.remove('ew-sidebar-collapsed');
+        if (sidebarToggle) sidebarToggle.textContent = '<';
+        // If expanded by default, it should be at the default right edge.
+        // The toggle click handler is responsible for restoring a *dragged* position.
+        sidebar.style.left = 'auto';
+        sidebar.style.right = '0px';
+        sidebar.style.top = '20%'; 
+      }
+      // Load and Apply Font Size after collapsed state is determined
+      loadAndApplyFontSize();
+    });
+  } else {
+    console.warn("EW_CONTENT: Context invalidated, defaulting to collapsed state and CSS position.");
+    sidebar.classList.add('ew-sidebar-collapsed');
+    if (sidebarToggle) sidebarToggle.textContent = '>';
+    applyFontSize(ewFontSizeMultiplier); // Apply default font size
+  }
+}
+
+function loadAndApplyFontSize() {
+  if (chrome.runtime?.id) {
+    chrome.storage.local.get('fontSizeMultiplier', (result) => {
+      if (chrome.runtime.lastError) {
+        console.error("EW_CONTENT: Error loading fontSizeMultiplier", chrome.runtime.lastError.message);
+        applyFontSize(ewFontSizeMultiplier); // Apply current default or last known
+        return;
+      }
+      if (result.fontSizeMultiplier) {
+        let loadedMultiplier = parseFloat(result.fontSizeMultiplier);
+        if (isNaN(loadedMultiplier) || loadedMultiplier < 0.7 || loadedMultiplier > 2.0) {
+           ewFontSizeMultiplier = 1.0; // Reset if invalid
+        } else {
+           ewFontSizeMultiplier = loadedMultiplier;
+        }
+      }
+      applyFontSize(ewFontSizeMultiplier);
+    });
+  } else {
+    applyFontSize(ewFontSizeMultiplier); // Apply current default or last known if context invalid
+  }
+}
+
 
 // Resize Sidebar Functions
 function ewOnResizeMouseDown(event) {
@@ -513,7 +620,73 @@ function triggerTranslation(text) {
 }
 
 // Create and manage the sidebar
+
+function ewHandleSidebarExpand() {
+  if (!sidebar || !sidebarToggle) return;
+
+  const EW_SIDEBAR_DEFAULT_TOP = '20%';
+  const EW_SIDEBAR_DEFAULT_RIGHT = '0px';
+  const EW_SIDEBAR_DEFAULT_LEFT = 'auto';
+
+  // Always expand to default CSS position when using the toggle
+  sidebar.style.left = EW_SIDEBAR_DEFAULT_LEFT;
+  sidebar.style.right = EW_SIDEBAR_DEFAULT_RIGHT;
+  sidebar.style.top = EW_SIDEBAR_DEFAULT_TOP; 
+  
+  sidebar.classList.remove('ew-sidebar-collapsed');
+  sidebarToggle.textContent = '<';
+  console.log("EW_CONTENT: Sidebar expanded to default edge position via toggle.");
+
+  // This toggle action does not load or save ewSidebarLastDraggedLeft/Top.
+  // The main drag logic still saves. The initial load (applyInitialSidebarStateAndSettings) 
+  // also still uses ewSidebarLastDraggedLeft/Top if the sidebar was left open and dragged.
+  // This specific toggle action ensures it *always* expands to the default edge.
+  
+  // Store sidebar collapsed state (boolean)
+  if (chrome.runtime?.id) {
+    chrome.storage.local.set({ sidebarCollapsed: false }, (result) => {
+       if (chrome.runtime.lastError) {
+          console.error("EW_CONTENT: Error saving sidebar collapsed state (false):", chrome.runtime.lastError.message);
+       }
+    });
+  } else {
+    console.warn("EW_CONTENT: Context invalidated, cannot save sidebar collapsed state (false).");
+  }
+}
+
+function ewHandleSidebarCollapse() {
+  if (!sidebar || !sidebarToggle) return;
+
+  const EW_SIDEBAR_DEFAULT_TOP = '20%';
+  const EW_SIDEBAR_DEFAULT_RIGHT = '0px';
+  const EW_SIDEBAR_DEFAULT_LEFT = 'auto';
+  
+  // This toggle action does not save or clear ewSidebarLastDraggedLeft/Top.
+  
+  // Prepare for collapse: ensure it's positioned at the default edge for the transform.
+  sidebar.style.left = EW_SIDEBAR_DEFAULT_LEFT;
+  sidebar.style.right = EW_SIDEBAR_DEFAULT_RIGHT; 
+  sidebar.style.top = EW_SIDEBAR_DEFAULT_TOP; // Ensure fixed default top position
+  
+  console.log("EW_CONTENT: Sidebar positioned to default edge before collapsing animation."); // Added log
+  sidebar.classList.add('ew-sidebar-collapsed');
+  sidebarToggle.textContent = '>';
+  console.log("EW_CONTENT: Sidebar collapsed to default edge position via toggle.");
+
+  // Store sidebar collapsed state (boolean)
+  if (chrome.runtime?.id) {
+    chrome.storage.local.set({ sidebarCollapsed: true }, () => { // Removed unused 'result' parameter
+       if (chrome.runtime.lastError) {
+          console.error("EW_CONTENT: Error saving sidebar collapsed state (true):", chrome.runtime.lastError.message);
+       }
+    });
+  } else {
+    console.warn("EW_CONTENT: Context invalidated, cannot save sidebar collapsed state (true).");
+  }
+}
+
 function createSidebar() {
+  console.log("EW_CONTENT: createSidebar called. Timestamp:", Date.now());
   if (document.getElementById('ew-sidebar')) return; // Already exists
 
   sidebar = document.createElement('div');
@@ -525,82 +698,12 @@ function createSidebar() {
   sidebarToggle.textContent = '>'; // Indicate it can be expanded
 
   sidebarToggle.addEventListener('click', () => {
-    const isCurrentlyCollapsed = sidebar.classList.contains('ew-sidebar-collapsed');
-    const currentTop = sidebar.style.top || window.getComputedStyle(sidebar).top || '20%'; 
+    if (!sidebar) return; 
 
-    if (isCurrentlyCollapsed) { // EXPANDING
-      // 1. Remove class (this will start the transition if any styles change immediately)
-      sidebar.classList.remove('ew-sidebar-collapsed');
-      // 2. Set toggle text
-      sidebarToggle.textContent = '<';
-      // 3. Retrieve and apply stored position or default
-      if (chrome.runtime?.id) {
-        chrome.storage.local.get(['ewSidebarLastDraggedLeft', 'ewSidebarLastDraggedTop'], (result) => {
-          if (chrome.runtime.lastError) {
-            console.error("EW: Error getting last dragged pos for expand:", chrome.runtime.lastError.message);
-            sidebar.style.left = 'auto';
-            sidebar.style.right = '0px';
-            sidebar.style.top = '20%'; // Default top
-            return;
-          }
-          if (result.ewSidebarLastDraggedLeft && result.ewSidebarLastDraggedTop) {
-            console.log("EW: Restoring last dragged position on expand:", result);
-            sidebar.style.left = result.ewSidebarLastDraggedLeft;
-            sidebar.style.top = result.ewSidebarLastDraggedTop;
-            sidebar.style.right = 'auto'; // Override default CSS 'right:0'
-          } else {
-            console.log("EW: No last dragged position found, defaulting to right edge on expand.");
-            sidebar.style.left = 'auto';
-            sidebar.style.right = '0px';
-            sidebar.style.top = '20%'; // Default top from CSS
-          }
-        });
-      } else {
-        console.warn("EW: Context invalidated, defaulting sidebar position on expand.");
-        sidebar.style.left = 'auto';
-        sidebar.style.right = '0px';
-        sidebar.style.top = '20%'; // Default top
-      }
-    } else { // COLLAPSING
-      // 1. Check if sidebar.style.left is set and not 'auto', indicating it has been dragged.
-      if (sidebar.style.left && sidebar.style.left !== 'auto') {
-        if (chrome.runtime?.id) {
-          chrome.storage.local.set({ 
-            ewSidebarLastDraggedLeft: sidebar.style.left, 
-            ewSidebarLastDraggedTop: sidebar.style.top 
-          }, () => { 
-            if (chrome.runtime.lastError) console.error("EW: Error saving last dragged pos:", chrome.runtime.lastError.message); 
-            else console.log("EW: Saved last dragged position:", {left: sidebar.style.left, top: sidebar.style.top});
-          });
-        }
-      } else {
-        // 2. If not dragged (or already at default edge), explicitly clear any stored drag position
-        if (chrome.runtime?.id) {
-          chrome.storage.local.remove(['ewSidebarLastDraggedLeft', 'ewSidebarLastDraggedTop'], () => {
-             if (chrome.runtime.lastError) console.error("EW: Error clearing last dragged pos:", chrome.runtime.lastError.message);
-             else console.log("EW: Sidebar was at default right edge, cleared stored drag pos.");
-          });
-        }
-      }
-      
-      // 3. Prepare for collapse: ensure it's positioned at the right edge for the transform.
-      sidebar.style.left = 'auto';
-      sidebar.style.right = '0px'; 
-      sidebar.style.top = currentTop; // Ensure top is explicitly set based on its value before collapse starts
-      
-      // 4. Add class to trigger collapse animation
-      sidebar.classList.add('ew-sidebar-collapsed');
-      // 5. Set toggle text
-      sidebarToggle.textContent = '>';
-    }
-
-    // Store sidebar collapsed state (boolean)
-    if (chrome.runtime?.id) {
-      chrome.storage.local.set({ sidebarCollapsed: sidebar.classList.contains('ew-sidebar-collapsed') }, () => {
-         if (chrome.runtime.lastError) console.error("EW: Error saving sidebar collapsed state:", chrome.runtime.lastError.message);
-      });
+    if (sidebar.classList.contains('ew-sidebar-collapsed')) {
+      ewHandleSidebarExpand();
     } else {
-      console.warn("EW: Context invalidated, cannot save sidebar collapsed state.");
+      ewHandleSidebarCollapse();
     }
   });
 
@@ -614,7 +717,9 @@ function createSidebar() {
   localSidebarHeader.style.margin = "0 0 10px 0";
   localSidebarHeader.style.padding = "0";
   ewSidebarHeader = localSidebarHeader; // ASSIGNED to global
-  if (ewSidebarHeader) { // Attach mousedown listener for dragging
+  if (ewSidebarHeader) { 
+    // Remove existing listener before adding, to prevent duplicates if createSidebar is called multiple times
+    ewSidebarHeader.removeEventListener('mousedown', ewOnMouseDown);
     ewSidebarHeader.addEventListener('mousedown', ewOnMouseDown);
   }
 
@@ -676,108 +781,20 @@ function createSidebar() {
   sidebar.appendChild(resizeHandleBottom);
 
   // Attach mousedown listeners for resizing
-  if (resizeHandleLeft) resizeHandleLeft.addEventListener('mousedown', ewOnResizeMouseDown);
-  if (resizeHandleBottom) resizeHandleBottom.addEventListener('mousedown', ewOnResizeMouseDown);
+  if (resizeHandleLeft) {
+    resizeHandleLeft.removeEventListener('mousedown', ewOnResizeMouseDown); // Prevent duplicates
+    resizeHandleLeft.addEventListener('mousedown', ewOnResizeMouseDown);
+  }
+  if (resizeHandleBottom) {
+    resizeHandleBottom.removeEventListener('mousedown', ewOnResizeMouseDown); // Prevent duplicates
+    resizeHandleBottom.addEventListener('mousedown', ewOnResizeMouseDown);
+  }
   
   document.body.appendChild(sidebar);
 
-  // Restore sidebar state
-  if (chrome.runtime?.id) {
-    chrome.storage.local.get('sidebarCollapsed', (result) => {
-      if (chrome.runtime.lastError) { // Check for errors during storage.get
-        console.error("EW: Error restoring sidebar state:", chrome.runtime.lastError.message);
-        return;
-      }
-      if (result.sidebarCollapsed === false) { // Check for explicitly false
-          sidebar.classList.remove('ew-sidebar-collapsed');
-          sidebarToggle.textContent = '<';
-      } else {
-          sidebar.classList.add('ew-sidebar-collapsed');
-          sidebarToggle.textContent = '>';
-      }
-    });
-  } else {
-    console.log("EW: Context invalidated, cannot restore sidebar state.");
-  }
-
-  // Restore sidebar position
-  if (chrome.runtime?.id && sidebar) { // Ensure sidebar exists and context is valid
-    chrome.storage.local.get(['ewSidebarTop', 'ewSidebarLeft'], (result) => {
-      if (chrome.runtime.lastError) {
-        console.error("EW: Error loading sidebar position:", chrome.runtime.lastError.message);
-        return;
-      }
-      
-      let restored = false;
-      if (result.ewSidebarLeft && result.ewSidebarLeft !== 'auto') { // Check if a valid 'left' was stored
-        sidebar.style.left = result.ewSidebarLeft;
-        sidebar.style.right = 'auto'; // Important: override initial 'right:0'
-        restored = true;
-        console.log("EW: Restored sidebar left:", result.ewSidebarLeft);
-      }
-      if (result.ewSidebarTop && result.ewSidebarTop !== 'auto') { // Check if a valid 'top' was stored
-        sidebar.style.top = result.ewSidebarTop;
-        sidebar.style.bottom = 'auto'; // Important: override initial 'bottom' if it was ever used
-        restored = true;
-        console.log("EW: Restored sidebar top:", result.ewSidebarTop);
-      }
-
-      if (restored) {
-          console.log("EW: Sidebar position restored.");
-      } else {
-          console.log("EW: No saved sidebar position found or applied, relying on CSS defaults.");
-      }
-    });
-  } else if (!sidebar) {
-      console.warn("EW: Sidebar not available to restore position (at restore code block).");
-  } else {
-      console.warn("EW: Context invalidated, cannot restore sidebar position (at restore code block).");
-  }
-
-  // Restore sidebar dimensions (width, height)
-  if (chrome.runtime?.id && sidebar) { 
-    chrome.storage.local.get(['ewSidebarWidth', 'ewSidebarHeight'], (result) => {
-      if (chrome.runtime.lastError) {
-        console.error("EW: Error loading sidebar dimensions:", chrome.runtime.lastError.message);
-        applyDefaultDimensions(); 
-        return;
-      }
-      
-      let dimensionsRestored = false;
-      if (result.ewSidebarWidth) {
-        const newWidth = parseFloat(result.ewSidebarWidth);
-        if (!isNaN(newWidth) && newWidth >= EW_SIDEBAR_MIN_WIDTH && newWidth <= EW_SIDEBAR_MAX_WIDTH) {
-          sidebar.style.width = newWidth + 'px';
-          dimensionsRestored = true;
-          console.log("EW: Restored sidebar width:", newWidth + 'px');
-        }
-      }
-      if (result.ewSidebarHeight) {
-        const newHeight = parseFloat(result.ewSidebarHeight);
-        const currentMaxHeight = Math.floor(window.innerHeight * 0.9); // Recalculate or use EW_SIDEBAR_MAX_HEIGHT
-        if (!isNaN(newHeight) && newHeight >= EW_SIDEBAR_MIN_HEIGHT && newHeight <= currentMaxHeight) {
-          sidebar.style.height = newHeight + 'px';
-          dimensionsRestored = true;
-          console.log("EW: Restored sidebar height:", newHeight + 'px');
-        }
-      }
-
-      if (dimensionsRestored) {
-          console.log("EW: Sidebar dimensions restored.");
-      } else {
-          console.log("EW: No saved sidebar dimensions found/applied, using defaults or CSS.");
-          // Apply default only if nothing was restored, to avoid overriding a single restored dimension
-          if (!result.ewSidebarWidth && !result.ewSidebarHeight) {
-            applyDefaultDimensions();
-          }
-      }
-    });
-  } else if (!sidebar) {
-      console.warn("EW: Sidebar not available to restore dimensions (at dimension restore block).");
-  } else {
-      console.warn("EW: Context invalidated, cannot restore sidebar dimensions (at dimension restore block).");
-      applyDefaultDimensions(); 
-  }
+  // NOTE: All restoration logic (collapsed state, position, dimensions, font size) 
+  // is now intended to be handled by initializeUI via applyInitialSidebarStateAndSettings.
+  // createSidebar should focus only on creating the DOM elements with their default classes and listeners.
 }
 
 // Ensure UI is initialized when the script loads if enabled
