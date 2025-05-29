@@ -319,16 +319,33 @@ function loadAndApplyFontSize() {
 }
 
 function ewOnResizeMouseDown(event) {
-  if (event.button !== 0 || !sidebar) return; 
+  if (event.button !== 0 || !sidebar) return; // Only left mouse button and if sidebar exists
+
   isEwResizing = true;
   ewResizeType = event.target.dataset.resizeType; 
+  
   ewResizeStartX = event.clientX;
   ewResizeStartY = event.clientY;
+  
   ewInitialSidebarWidth = sidebar.offsetWidth;
   ewInitialSidebarHeight = sidebar.offsetHeight;
+  
   const computedStyle = window.getComputedStyle(sidebar);
-  ewInitialSidebarLeft = parseFloat(computedStyle.left) || 0; 
+
+  if (ewResizeType === 'left') {
+    ewInitialSidebarLeft = parseFloat(computedStyle.left) || 0;
+  } else if (ewResizeType === 'top') {
+    // For 'top' resize, we need initial height and initial Y (top) position.
+    // ewInitialSidebarHeight is already captured.
+    // ewSidebarInitialY is used for the top position of the sidebar (similar to how ewSidebarInitialX is used for left in drag)
+    ewSidebarInitialY = sidebar.getBoundingClientRect().top; 
+  }
+  // For 'right' resize, ewInitialSidebarWidth is already captured.
+  // For 'bottom' resize, ewInitialSidebarHeight is already captured.
+
+  // Update max height dynamically based on current viewport
   EW_SIDEBAR_MAX_HEIGHT = Math.floor(window.innerHeight * 0.9);
+
   document.documentElement.style.userSelect = 'none';
   document.documentElement.addEventListener('mousemove', ewOnResizeMouseMove, { passive: false });
   document.documentElement.addEventListener('mouseup', ewOnResizeMouseUp, { once: true });
@@ -535,9 +552,21 @@ function createSidebar() {
   resizeHandleBottom.id = 'ew-resize-handle-bottom';
   resizeHandleBottom.dataset.resizeType = 'bottom'; 
   resizeHandleBottom.addEventListener('mousedown', ewOnResizeMouseDown);
+
+  const resizeHandleTop = document.createElement('div');
+  resizeHandleTop.id = 'ew-resize-handle-top';
+  resizeHandleTop.dataset.resizeType = 'top';
+  resizeHandleTop.addEventListener('mousedown', ewOnResizeMouseDown);
+
+  const resizeHandleRight = document.createElement('div');
+  resizeHandleRight.id = 'ew-resize-handle-right';
+  resizeHandleRight.dataset.resizeType = 'right';
+  resizeHandleRight.addEventListener('mousedown', ewOnResizeMouseDown);
   
   sidebar.appendChild(resizeHandleLeft);
   sidebar.appendChild(resizeHandleBottom);
+  sidebar.appendChild(resizeHandleTop);
+  sidebar.appendChild(resizeHandleRight);
   document.body.appendChild(sidebar);
   
   // Initial state application is now primarily in initializeUI via applyInitialSidebarStateAndSettings

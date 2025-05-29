@@ -1,22 +1,31 @@
 /* Global variables for colors (optional, but good for consistency) */
 :root {
-  --google-blue: #1a73e8;
-  --google-blue-darker: #185abc;
-  --google-text-primary: #202124;
-  --google-text-secondary: #3c4043;
-  --google-text-tertiary: #5f6368;
-  --google-border-subtle: #dadce0;
-  --google-border-active: #c6cace;
-  --google-background-primary: #ffffff;
-  --google-background-hover: #f8f9fa;
-  --google-background-separator: #e8eaed;
+  /* New Deeper Lavender Theme Variables */
+  --ew-lavender-bg: #dcd0ff; /* Deeper lavender for main background */
+  --ew-lavender-bg-light: #e8e0ff; /* Lighter shade for accents or hover */
+  --ew-lavender-accent: #c9b0ff; /* Accent color, darker than bg */
+  --ew-lavender-accent-dark: #b090f0; /* Darker accent for borders or hover */
+  --ew-lavender-text-primary: #3d2f5c; /* Dark purple/indigo for primary text on lavender */
+  --ew-lavender-text-secondary: #53427a; /* Slightly lighter for secondary text */
+  --ew-lavender-button-bg: #c0a8f0; /* Button background */
+  --ew-lavender-button-hover-bg: #b090f0; /* Button hover background */
+  --ew-lavender-button-border: #a078e0; /* Button border */
+
+  /* Gradient for collapsed toggle */
+  --ew-lavender-gradient-start: #d0c0f0; /* Deeper start for gradient */
+  --ew-lavender-gradient-end: #bca8e0;   /* Deeper end for gradient */
+  --ew-lavender-gradient-hover-start: #c0b0e0;
+  --ew-lavender-gradient-hover-end: #ac98d0;
+
+  /* Resize Handle Color */
+  --ew-resize-handle-border-color: var(--ew-lavender-accent-dark); /* Using an existing theme variable */
 }
 
 /* 下方長條文字框 */
 #ew-bottom-bar {
   position: absolute;
-  background-color: var(--google-background-hover); /* Example if used */
-  border: 1px solid var(--google-border-subtle);
+  background-color: var(--ew-lavender-bg-light); /* Updated to new theme */
+  border: 1px solid var(--ew-lavender-accent); /* Updated to new theme */
   border-radius: 4px;
   padding: 5px 8px;
   font-size: 13px;
@@ -39,9 +48,9 @@
   height: auto; /* Consider max-height relative to viewport */
   min-height: 150px; /* Increased min-height */
   max-height: calc(100vh - 40px); /* Example: leave some space from top/bottom */
-  background-color: #ffffff; /* Cleaner look */
-  color: #202124; /* Main text color */
-  border: 1px solid #dadce0; /* Google-like subtle border */
+  background-color: var(--ew-lavender-bg);
+  color: var(--ew-lavender-text-primary);
+  border: 1px solid var(--ew-lavender-accent-dark);
   border-right: none; /* Usually side panels don't have a border on the edge they attach to */
   border-radius: 8px 0 0 8px; /* Rounded corners on the left side */
   box-shadow: 0 1px 2px 0 rgba(60,64,67,.3), 0 2px 6px 2px rgba(60,64,67,.15); /* Google-like shadow */
@@ -50,7 +59,7 @@
   padding-left: 22px; /* Space for the toggle, adjusted */
   box-sizing: border-box;
   transition: transform 0.3s ease-in-out;
-  overflow-x: hidden;
+  overflow: hidden; /* Ensures no scrollbars on the main container due to flex item miscalculations */
   font-family: 'Roboto', 'Arial', sans-serif; /* Google Font */
   font-size: 14px; /* Base font size */
   line-height: 1.5; /* Improved line height */
@@ -69,8 +78,8 @@
   transform: translateY(-50%);
   width: 24px; /* Slightly wider toggle */
   height: 48px; /* Taller toggle */
-  background-color: #ffffff; /* white */
-  border: 1px solid #dadce0; /* subtle border */
+  background-color: var(--ew-lavender-button-bg);
+  border: 1px solid var(--ew-lavender-button-border);
   border-right: none; /* Important */
   border-top-left-radius: 6px; /* Match sidebar rounding */
   border-bottom-left-radius: 6px; /* Match sidebar rounding */
@@ -79,28 +88,28 @@
   align-items: center;
   justify-content: center;
   font-weight: bold; 
-  color: #5f6368; /* Google icon color */
+  color: var(--ew-lavender-text-primary);
   user-select: none;
-  box-shadow: -1px 0px 2px rgba(60,64,67,.1); /* Subtle shadow for toggle itself */
+  box-shadow: -1px 0px 2px rgba(0,0,0,.1); /* Keep a subtle shadow */
 }
 #ew-sidebar-toggle:hover {
-  background-color: #f8f9fa; /* very light grey */
+  background-color: var(--ew-lavender-button-hover-bg);
+  border-color: var(--ew-lavender-accent-dark);
 }
 
 /* Styles for the toggle when the sidebar is collapsed */
 #ew-sidebar.ew-sidebar-collapsed #ew-sidebar-toggle {
-  background: linear-gradient(135deg, #e6e6fa 0%, #d8bfd8 100%); /* Lavender to Thistle gradient */
-  border-color: #c5b2c5; /* A slightly darker, complementary border color */
-  color: #ffffff; /* White color for the '>' text for better contrast on lavender */
-  /* Ensure border-right is none, as it might be overridden by border-color otherwise */
+  background: linear-gradient(135deg, var(--ew-lavender-gradient-start) 0%, var(--ew-lavender-gradient-end) 100%);
+  border-color: var(--ew-lavender-accent-dark);
+  color: #ffffff; /* White color for the '>' text for better contrast */
   border-right: none; 
 }
 
 #ew-sidebar.ew-sidebar-collapsed #ew-sidebar-toggle:hover {
-  background: linear-gradient(135deg, #d8bfd8 0%, #cbaacb 100%); /* Slightly darker/shifted lavender gradient on hover */
-  border-color: #b39bb2; /* A bit darker for hover state */
+  background: linear-gradient(135deg, var(--ew-lavender-gradient-hover-start) 0%, var(--ew-lavender-gradient-hover-end) 100%);
+  border-color: var(--ew-lavender-accent-dark); /* Consistent with non-hover collapsed border */
   border-right: none;
-  /* color: #ffffff; */ /* White color is likely still good */
+  /* color: #ffffff; */ 
 }
 
 #ew-sidebar-fixed-controls {
@@ -116,10 +125,10 @@
   flex-shrink: 0;
   font-size: 1em; /* Adjust if needed, relative to sidebar's base font */
   font-weight: 600; /* Slightly bolder */
-  color: #3c4043; /* Darker grey */
+  color: var(--ew-lavender-text-primary);
   margin: 0 0 12px 0; /* Increased margin, manage all margin here */
   padding: 0 0 8px 0; /* Add padding for separation, manage all padding here */
-  border-bottom: 1px solid #e8eaed; /* Subtle separator line */
+  border-bottom: 1px solid var(--ew-lavender-accent);
 }
 
 #ew-font-controls {
@@ -134,10 +143,10 @@
 
 #ew-shortcut-display {
   font-size: 0.8em; 
-  color: #5f6368;  /* Google text tertiary */
+  color: var(--ew-lavender-text-secondary);
   margin-bottom: 10px; 
   padding-bottom: 8px; 
-  border-bottom: 1px solid #e8eaed; /* Subtle separator */
+  border-bottom: 1px solid var(--ew-lavender-accent);
   text-align: center; 
   flex-shrink: 0; 
 }
@@ -153,12 +162,12 @@
   white-space: pre-wrap;  /* Existing good properties */
   word-break: break-word; /* Existing good properties */
   font-size: 0.9em; /* Existing good properties */
-  color: var(--google-text-primary); /* Existing good properties, using var */
+  color: var(--ew-lavender-text-primary); 
 } 
 
 #ew-copy-button {
   /* background-color, color, border, padding, text-align, text-decoration, font-size, border-radius, cursor are already defined */
-  background-color: var(--google-blue);
+  background-color: var(--ew-lavender-button-bg);
   color: white;
   border: none;
   padding: 8px 16px;
@@ -178,7 +187,7 @@
 }
 
 #ew-copy-button:hover {
-  background-color: #185abc; /* darker Google blue */
+  background-color: var(--ew-lavender-button-hover-bg); /* Updated to lavender theme */
   box-shadow: 0 1px 1px 0 rgba(0,0,0,.1); /* Subtle shadow on hover */
 }
 
@@ -191,8 +200,8 @@
 
 .ew-loading-spinner {
   display: inline-block;
-  border: 3px solid #f8f9fa; /* Google background hover */
-  border-top: 3px solid #1a73e8; /* Google blue */
+  border: 3px solid var(--ew-lavender-bg-light);
+  border-top: 3px solid var(--ew-lavender-accent-dark);
   border-radius: 50%;
   width: 1.2em; 
   height: 1.2em;
@@ -216,30 +225,49 @@
 /* #ew-font-decrease, #ew-font-increase are already styled above */
 
 
-/* Resize Handles - keeping them subtle */
+/* Resize Handles - Updated for permanent borders and new handles */
 #ew-resize-handle-left {
   position: absolute;
-  left: -3px; 
+  left: -5px; 
   top: 0;
-  width: 6px; 
+  width: 10px; 
   height: 100%;
   cursor: ew-resize;
-  z-index: 1; /* Relative to sidebar */
+  z-index: 100001; 
+  border-left: 1px solid var(--ew-resize-handle-border-color);
 }
 
 #ew-resize-handle-bottom {
   position: absolute;
-  bottom: -3px;
+  bottom: -5px;
   left: 0;
   width: 100%;
-  height: 6px; 
+  height: 10px; 
   cursor: ns-resize;
-  z-index: 1; 
+  z-index: 100001; 
+  border-bottom: 1px solid var(--ew-resize-handle-border-color);
 }
 
-#ew-resize-handle-left:hover,
-#ew-resize-handle-bottom:hover {
-  background-color: rgba(26, 115, 232, 0.1); /* Google blue with low opacity */
+#ew-resize-handle-top {
+  position: absolute;
+  top: -5px; 
+  left: 0;
+  width: 100%;
+  height: 10px; 
+  cursor: ns-resize; /* Typically top handle is for vertical resize */
+  z-index: 100001; 
+  border-top: 1px solid var(--ew-resize-handle-border-color);
+}
+
+#ew-resize-handle-right {
+  position: absolute;
+  right: -5px; 
+  top: 0;
+  width: 10px; 
+  height: 100%;
+  cursor: ew-resize; /* Typically right handle is for horizontal resize */
+  z-index: 100001;
+  border-right: 1px solid var(--ew-resize-handle-border-color);
 }
 
 /* Ensure body scrollbar doesn't jump when sidebar is fixed */
