@@ -219,14 +219,12 @@ function initializeUI() {
   }
 }
 
+// MODIFIED applyFontSize function
 function applyFontSize(multiplier) {
-  if (sidebarContent) {
+  if (sidebarContent) { // sidebarContent might not exist if UI not fully initialized
     sidebarContent.style.fontSize = `${EW_BASE_FONT_SIZE * multiplier}px`;
   }
-  const shortcutDisplay = document.getElementById('ew-shortcut-display');
-  if (shortcutDisplay) {
-    shortcutDisplay.style.fontSize = `${(EW_BASE_FONT_SIZE - 2) * multiplier}px`; 
-  }
+  // Removed the block that modifies shortcutDisplay.style.fontSize
 }
 
 function handleFontDecrease() {
@@ -256,46 +254,64 @@ function applyDefaultDimensions() {
 
 function applyInitialSidebarStateAndSettings() {
   if (!sidebar) {
+    console.warn("EW_CONTENT: applyInitialSidebarStateAndSettings called but sidebar is null.");
     return;
   }
-  applyDefaultDimensions();
+
+  applyDefaultDimensions(); // Resets to default CSS position (e.g., right edge, top 20%)
+
   if (chrome.runtime?.id) {
-    chrome.storage.local.get(['sidebarCollapsed', 'ewSidebarTop', 'ewSidebarLeft', 'ewSidebarWidth', 'ewSidebarHeight'], (result) => {
+    chrome.storage.local.get('sidebarCollapsed', (result) => {
       if (chrome.runtime.lastError) {
-        console.error("EW: Error loading initial state:", chrome.runtime.lastError.message);
-        sidebar.classList.add('ew-sidebar-collapsed'); // Default to collapsed on error
+        console.error("EW_CONTENT: Error loading sidebarCollapsed state:", chrome.runtime.lastError.message);
+        // Fallback to collapsed if storage read fails
+        sidebar.classList.add('ew-sidebar-collapsed');
         if (sidebarToggle) sidebarToggle.textContent = '>';
-        applyFontSize(ewFontSizeMultiplier); 
+        if (typeof loadAndApplyFontSize === "function") loadAndApplyFontSize();
         return;
       }
 
-      let shouldBeCollapsed = typeof result.sidebarCollapsed === 'undefined' ? true : result.sidebarCollapsed;
+      let storedState = result.sidebarCollapsed;
 
-      if (shouldBeCollapsed) {
+      if (typeof storedState === 'undefined') {
+        console.log("EW_CONTENT: sidebarCollapsed not found in storage. Applying default: collapsed, and attempting to save.");
+        // Directly apply visual state to ensure it's immediately collapsed
         sidebar.classList.add('ew-sidebar-collapsed');
         if (sidebarToggle) sidebarToggle.textContent = '>';
-        // Position is already default from applyDefaultDimensions, which is correct for collapsed state
-      } else {
-        // If it's not supposed to be collapsed, set its open position and dimensions
-        sidebar.classList.remove('ew-sidebar-collapsed');
-        if (sidebarToggle) sidebarToggle.textContent = '<';
         
-        // Restore position and dimensions if available and not collapsed
-        if (result.ewSidebarTop) sidebar.style.top = result.ewSidebarTop;
-        if (result.ewSidebarLeft) sidebar.style.left = result.ewSidebarLeft;
-        // If left is restored, right should be auto
-        if (result.ewSidebarLeft && result.ewSidebarLeft !== 'auto') sidebar.style.right = 'auto'; 
-
-        if (result.ewSidebarWidth) sidebar.style.width = result.ewSidebarWidth;
-        if (result.ewSidebarHeight) sidebar.style.height = result.ewSidebarHeight;
+        // Attempt to save this default state
+        // This 'set' is asynchronous. The hope is that by applying the class above synchronously,
+        // and given this is the designated 'init' function, it has a good chance.
+        chrome.storage.local.set({ sidebarCollapsed: true }, () => {
+          if (chrome.runtime.lastError) {
+            console.error("EW_CONTENT: Error saving default 'sidebarCollapsed: true' state:", chrome.runtime.lastError.message);
+          } else {
+            console.log("EW_CONTENT: Default 'sidebarCollapsed: true' state saved for undefined case.");
+          }
+        });
+      } else {
+        // Apply the loaded state
+        console.log("EW_CONTENT: sidebarCollapsed loaded from storage:", storedState);
+        if (storedState) { // true means collapsed
+          sidebar.classList.add('ew-sidebar-collapsed');
+          if (sidebarToggle) sidebarToggle.textContent = '>';
+        } else { // false means expanded
+          sidebar.classList.remove('ew-sidebar-collapsed');
+          if (sidebarToggle) sidebarToggle.textContent = '<';
+          // Ensure correct positioning for expanded state (already part of original function)
+          sidebar.style.left = 'auto';
+          sidebar.style.right = '0px';
+          sidebar.style.top = '20%'; 
+        }
       }
-      loadAndApplyFontSize();
+      if (typeof loadAndApplyFontSize === "function") loadAndApplyFontSize();
     });
   } else {
-    // Fallback if chrome.storage is not available
+    // Fallback for invalid context (e.g., during development if script reloads weirdly)
+    console.warn("EW_CONTENT: Context invalidated during applyInitialSidebarStateAndSettings, defaulting to collapsed state.");
     sidebar.classList.add('ew-sidebar-collapsed');
     if (sidebarToggle) sidebarToggle.textContent = '>';
-    applyFontSize(ewFontSizeMultiplier); 
+    if (typeof loadAndApplyFontSize === "function") loadAndApplyFontSize();
   }
 }
 
