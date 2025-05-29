@@ -560,51 +560,72 @@ function ewHandleSidebarCollapse() {
 
   const sidebarRect = sidebar.getBoundingClientRect();
   const windowWidth = window.innerWidth;
-  const defaultTopPercentage = 20; 
-  const defaultTopPx = window.innerHeight * (defaultTopPercentage / 100);
-  const threshold = 5; 
+  const windowHeight = window.innerHeight; // Get window height for percentage calculation
   
-  // Check if sidebar.style.right is already '0px' and sidebar.style.left is 'auto' or empty
-  const isAlreadyDockedRight = (sidebar.style.right === '0px' || sidebar.style.right === '') && 
-                               (sidebar.style.left === 'auto' || sidebar.style.left === '');
-  const isAtDefaultRightEdge = Math.abs(sidebarRect.right - windowWidth) < threshold;
-  const isAtDefaultTop = Math.abs(sidebarRect.top - defaultTopPx) < threshold;
+  const sidebarCurrentWidth = sidebarRect.width; // Get current width for targetLeft calculation
 
-  // If the sidebar is dragged away from the default edge/top, or not programmatically set to default
-  if (!isAlreadyDockedRight || !isAtDefaultRightEdge || !isAtDefaultTop) {
-    // Set current position explicitly if not already using left/top for positioning.
-    // This ensures the transition starts from the visual position.
-    if (sidebar.style.left === 'auto' || sidebar.style.left === '') {
-        sidebar.style.left = sidebarRect.left + 'px';
-        sidebar.style.top = sidebarRect.top + 'px';
-        sidebar.style.right = 'auto'; 
-    }
+  // Default docked position (target)
+  const targetTopPercent = 20;
+  const targetTopPx = windowHeight * (targetTopPercent / 100);
+  // Target right is 0px, so target left depends on sidebar width
+  const targetLeftPx = windowWidth - sidebarCurrentWidth; 
 
+  // Current position
+  const currentTopPx = sidebarRect.top;
+  const currentLeftPx = sidebarRect.left;
 
-    setTimeout(() => {
-      sidebar.style.left = 'auto';
-      sidebar.style.right = '0px';
-      sidebar.style.top = '20%'; 
+  // Threshold to decide if animation is needed
+  const positionThreshold = 5; // 5px threshold
 
-      const handlePositionTransitionEnd = (event) => {
-        if (event.target === sidebar && (event.propertyName === 'right' || event.propertyName === 'top' || event.propertyName === 'left')) {
-          sidebar.removeEventListener('transitionend', handlePositionTransitionEnd);
-          
-          sidebar.classList.add('ew-sidebar-collapsed');
-          sidebarToggle.textContent = '>';
-          if (chrome.runtime?.id) {
-            chrome.storage.local.set({ sidebarCollapsed: true });
-          }
+  const isAtTargetTop = Math.abs(currentTopPx - targetTopPx) < positionThreshold;
+  // For 'left', compare with targetLeftPx (calculated from right:0)
+  const isAtTargetLeft = Math.abs(currentLeftPx - targetLeftPx) < positionThreshold;
+
+  // If the sidebar is significantly away from its target docked position
+  if (!isAtTargetTop || !isAtTargetLeft) {
+    // Ensure sidebar is positioned with left/top for JS animation
+    sidebar.style.right = 'auto'; // Important: allow left to be controlled
+    sidebar.style.left = currentLeftPx + 'px';
+    sidebar.style.top = currentTopPx + 'px';
+
+    const animationDuration = 200; // ms for the slide to edge animation
+    let startTime = null;
+
+    function animateReturnToEdge(timestamp) {
+      if (!startTime) startTime = timestamp;
+      const progress = timestamp - startTime;
+      const fraction = Math.min(progress / animationDuration, 1);
+
+      // Linear interpolation (ease-out could be added with a simple easing function)
+      const newLeft = currentLeftPx + (targetLeftPx - currentLeftPx) * fraction;
+      const newTop = currentTopPx + (targetTopPx - currentTopPx) * fraction;
+
+      sidebar.style.left = newLeft + 'px';
+      sidebar.style.top = newTop + 'px';
+
+      if (fraction < 1) {
+        requestAnimationFrame(animateReturnToEdge);
+      } else {
+        // Animation complete: Snap to final target position and then collapse
+        sidebar.style.left = 'auto';
+        sidebar.style.right = '0px';
+        sidebar.style.top = targetTopPercent + '%'; // Use percentage for final state
+
+        sidebar.classList.add('ew-sidebar-collapsed');
+        sidebarToggle.textContent = '>';
+        if (chrome.runtime?.id) {
+          chrome.storage.local.set({ sidebarCollapsed: true });
         }
-      };
-      sidebar.addEventListener('transitionend', handlePositionTransitionEnd);
-    }, 0); 
+      }
+    }
+    requestAnimationFrame(animateReturnToEdge);
 
   } else {
-    // If already at (or very near) the default position, just collapse directly.
+    // If already at (or very near) the target docked position, just collapse directly.
+    // Ensure it's perfectly at the default position before transform.
     sidebar.style.left = 'auto';
     sidebar.style.right = '0px';
-    sidebar.style.top = '20%';
+    sidebar.style.top = targetTopPercent + '%'; // Use percentage
     
     sidebar.classList.add('ew-sidebar-collapsed');
     sidebarToggle.textContent = '>';
