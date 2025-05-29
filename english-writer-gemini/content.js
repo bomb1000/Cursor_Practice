@@ -473,6 +473,11 @@ function createSidebar() {
     }
   });
 
+  // Create the new fixed controls wrapper
+  const fixedControls = document.createElement('div');
+  fixedControls.id = 'ew-sidebar-fixed-controls';
+
+  // sidebarContent is created before fixedControls, but appended after
   sidebarContent = document.createElement('div');
   sidebarContent.id = 'ew-sidebar-content';
   sidebarContent.textContent = '...'; 
@@ -482,6 +487,7 @@ function createSidebar() {
   ewSidebarHeader.textContent = "英文寫法";
   // Inline styles for margin and padding removed, will be handled by CSS
   ewSidebarHeader.addEventListener('mousedown', ewOnMouseDown);
+  fixedControls.appendChild(ewSidebarHeader); // Append to fixedControls
 
   const fontControlsContainer = document.createElement('div');
   fontControlsContainer.id = 'ew-font-controls';
@@ -493,16 +499,12 @@ function createSidebar() {
   fontIncreaseButton.textContent = 'A+';
   fontControlsContainer.appendChild(fontDecreaseButton);
   fontControlsContainer.appendChild(fontIncreaseButton);
+  fixedControls.appendChild(fontControlsContainer); // Append to fixedControls
 
   const shortcutDisplay = document.createElement('div');
   shortcutDisplay.id = 'ew-shortcut-display';
   shortcutDisplay.textContent = 'Shortcut: ...'; 
-
-  sidebar.appendChild(sidebarToggle);
-  sidebar.appendChild(ewSidebarHeader); 
-  sidebar.appendChild(fontControlsContainer); 
-  sidebar.appendChild(shortcutDisplay); 
-  sidebar.appendChild(sidebarContent);
+  fixedControls.appendChild(shortcutDisplay); // Append to fixedControls
 
   const copyButton = document.createElement('button');
   copyButton.id = 'ew-copy-button';
@@ -517,7 +519,12 @@ function createSidebar() {
       }).catch(err => console.error('EW: Could not copy text: ', err));
     }
   });
-  sidebar.appendChild(copyButton);
+  fixedControls.appendChild(copyButton); // Append to fixedControls
+
+  // Append elements to sidebar in the correct order
+  sidebar.appendChild(sidebarToggle);
+  sidebar.appendChild(fixedControls);    // Append the new wrapper
+  sidebar.appendChild(sidebarContent);   // Append content after fixed controls
 
   const resizeHandleLeft = document.createElement('div');
   resizeHandleLeft.id = 'ew-resize-handle-left';

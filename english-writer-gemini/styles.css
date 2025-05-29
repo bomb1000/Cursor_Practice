@@ -87,6 +87,29 @@
   background-color: #f8f9fa; /* very light grey */
 }
 
+/* Styles for the toggle when the sidebar is collapsed */
+#ew-sidebar.ew-sidebar-collapsed #ew-sidebar-toggle {
+  background: linear-gradient(135deg, #e6e6fa 0%, #d8bfd8 100%); /* Lavender to Thistle gradient */
+  border-color: #c5b2c5; /* A slightly darker, complementary border color */
+  color: #ffffff; /* White color for the '>' text for better contrast on lavender */
+  /* Ensure border-right is none, as it might be overridden by border-color otherwise */
+  border-right: none; 
+}
+
+#ew-sidebar.ew-sidebar-collapsed #ew-sidebar-toggle:hover {
+  background: linear-gradient(135deg, #d8bfd8 0%, #cbaacb 100%); /* Slightly darker/shifted lavender gradient on hover */
+  border-color: #b39bb2; /* A bit darker for hover state */
+  border-right: none;
+  /* color: #ffffff; */ /* White color is likely still good */
+}
+
+#ew-sidebar-fixed-controls {
+  flex-shrink: 0; /* Prevents this container from shrinking */
+  display: flex; /* Use flex to arrange its own children */
+  flex-direction: column; /* Stack children vertically */
+  /* Padding will be handled by children or specific needs later */
+}
+
 #ew-sidebar-header {
   cursor: move;
   user-select: none;
@@ -120,35 +143,38 @@
 }
 
 #ew-sidebar-content {
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  white-space: pre-wrap; 
-  word-break: break-word; 
-  margin-bottom: 12px; 
-  flex-grow: 1;
-  overflow-y: auto;
-  min-height: 50px; 
-  padding: 8px; /* internal padding for the scrollable area */
-  font-size: 0.9em; /* Slightly smaller for content body */
-  color: #202124; /* Main text color */
+  flex-grow: 1; /* Allows this element to take up available vertical space */
+  overflow-y: auto; /* Enables vertical scrolling ONLY for this element */
+  min-height: 50px; /* Or a suitable minimum height */
+  padding: 8px; /* Retain or adjust existing padding */
+  margin-bottom: 0; /* Remove margin-bottom as copy button is now in fixed controls */
+  word-wrap: break-word; /* Existing good properties */
+  overflow-wrap: break-word; /* Existing good properties */
+  white-space: pre-wrap;  /* Existing good properties */
+  word-break: break-word; /* Existing good properties */
+  font-size: 0.9em; /* Existing good properties */
+  color: var(--google-text-primary); /* Existing good properties, using var */
 } 
 
 #ew-copy-button {
-  background-color: #1a73e8; /* Google blue */
+  /* background-color, color, border, padding, text-align, text-decoration, font-size, border-radius, cursor are already defined */
+  background-color: var(--google-blue);
   color: white;
   border: none;
-  padding: 8px 16px; /* adjust for balance */
+  padding: 8px 16px;
   text-align: center;
   text-decoration: none;
   font-size: 0.9em;
-  font-weight: 500; /* Medium weight for buttons */
+  font-weight: 500;
   border-radius: 4px;
   cursor: pointer;
-  width: auto; /* Size by content + padding */
-  align-self: flex-end; /* Position to the right */
-  margin-top: 10px; /* Space above it */
-  flex-shrink: 0;
-  transition: background-color 0.2s ease;
+  display: block; /* Ensure it takes appropriate width */
+  width: 100%;  /* Make it full width of the fixed controls area */
+  box-sizing: border-box; /* Include padding in its width */
+  margin-top: 8px; /* Add some space above it, separating from shortcut display or font controls */
+  flex-shrink: 0; /* Already present, good */
+  transition: background-color 0.2s ease; /* Already present, good */
+  /* align-self: flex-end; /* No longer needed, width is 100% */
 }
 
 #ew-copy-button:hover {
