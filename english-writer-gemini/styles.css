@@ -123,10 +123,14 @@
 }
 
 #ew-sidebar-fixed-controls {
-  flex-shrink: 0; /* Prevents this container from shrinking */
   display: flex; /* Use flex to arrange its own children */
   flex-direction: column; /* Stack children vertically */
-  /* Padding will be handled by children or specific needs later */
+  flex-grow: 0; /* Do not allow it to grow beyond its basis */
+  flex-shrink: 0; /* Prevents this container from shrinking */
+  flex-basis: 30%; /* Allocate 30% of the parent's height */
+  overflow-y: auto; /* Allow fixed controls to scroll if its own content is too tall for the 30% */
+  padding-bottom: 5px; /* Proactive padding for its own potential scrollbar */
+  /* max-height: 35vh; /* Removed as flex-basis should now control this */
 }
 
 #ew-sidebar-header {
@@ -152,7 +156,7 @@
 }
 
 #ew-shortcut-display {
-  font-size: 0.8em; 
+  font-size: 11px; /* Set a fixed pixel size */
   color: var(--ew-lavender-text-secondary);
   margin-bottom: 10px; 
   padding-bottom: 8px; 
@@ -162,9 +166,11 @@
 }
 
 #ew-sidebar-content {
-  flex-grow: 1; 
+  flex-grow: 1; /* Allows this element to take up all remaining space */
+  flex-shrink: 1; /* Allow it to shrink if necessary (default) */
+  flex-basis: 0;  /* Start with no initial size, then grow to fill */
   overflow-y: auto; 
-  min-height: 0; 
+  min-height: 0; /* Crucial for allowing it to shrink and enable scrolling */
   padding: 8px; 
   margin-bottom: 0; 
   word-wrap: break-word; 
