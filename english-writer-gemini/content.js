@@ -78,8 +78,9 @@ try {
         if (sidebar && sidebarToggle) { 
             sidebar.style.display = 'block'; 
             if (sidebar.classList.contains('ew-sidebar-collapsed')) {
-                sidebar.classList.remove('ew-sidebar-collapsed');
-                sidebarToggle.textContent = '<';
+                // sidebar.classList.remove('ew-sidebar-collapsed'); // This is handled by ewHandleSidebarExpand
+                // sidebarToggle.textContent = '<';
+                ewHandleSidebarExpand(); // Use the main function to ensure consistent behavior
                 if (chrome.runtime?.id) {
                     chrome.storage.local.set({ sidebarCollapsed: false });
                 }
@@ -119,8 +120,9 @@ try {
         if (sidebar && sidebarToggle) {
           sidebar.style.display = 'block'; 
           if (sidebar.classList.contains('ew-sidebar-collapsed')) {
-            sidebar.classList.remove('ew-sidebar-collapsed');
-            sidebarToggle.textContent = '<';
+            // sidebar.classList.remove('ew-sidebar-collapsed'); // Handled by ewHandleSidebarExpand
+            // sidebarToggle.textContent = '<';
+            ewHandleSidebarExpand(); // Use the main function
             if (chrome.runtime?.id) {
               chrome.storage.local.set({ sidebarCollapsed: false });
             }
@@ -141,15 +143,13 @@ try {
 // Initialize UI elements and event listeners
 function initializeUI() {
   console.log("EW_CONTENT: initializeUI called.");
-  // **MODIFIED**: Added iframe check
   if (window.self !== window.top) {
     console.log("EW_CONTENT: initializeUI called in an iframe, skipping sidebar creation and UI setup.");
     return;
   }
 
-  // All subsequent logic only runs in the top frame
   if (!document.getElementById('ew-sidebar')) {
-    createSidebar(); // This is fine, createSidebar is now guarded
+    createSidebar(); 
   } else {
     if (!document.getElementById('ew-font-controls') && sidebar) {
         const fontControlsContainer = document.createElement('div');
@@ -260,27 +260,39 @@ function applyInitialSidebarStateAndSettings() {
   }
   applyDefaultDimensions();
   if (chrome.runtime?.id) {
-    chrome.storage.local.get('sidebarCollapsed', (result) => {
+    chrome.storage.local.get(['sidebarCollapsed', 'ewSidebarTop', 'ewSidebarLeft', 'ewSidebarWidth', 'ewSidebarHeight'], (result) => {
       if (chrome.runtime.lastError) {
-        sidebar.classList.add('ew-sidebar-collapsed');
+        console.error("EW: Error loading initial state:", chrome.runtime.lastError.message);
+        sidebar.classList.add('ew-sidebar-collapsed'); // Default to collapsed on error
         if (sidebarToggle) sidebarToggle.textContent = '>';
         applyFontSize(ewFontSizeMultiplier); 
         return;
       }
+
       let shouldBeCollapsed = typeof result.sidebarCollapsed === 'undefined' ? true : result.sidebarCollapsed;
+
       if (shouldBeCollapsed) {
         sidebar.classList.add('ew-sidebar-collapsed');
         if (sidebarToggle) sidebarToggle.textContent = '>';
+        // Position is already default from applyDefaultDimensions, which is correct for collapsed state
       } else {
+        // If it's not supposed to be collapsed, set its open position and dimensions
         sidebar.classList.remove('ew-sidebar-collapsed');
         if (sidebarToggle) sidebarToggle.textContent = '<';
-        sidebar.style.left = 'auto';
-        sidebar.style.right = '0px';
-        sidebar.style.top = '20%'; 
+        
+        // Restore position and dimensions if available and not collapsed
+        if (result.ewSidebarTop) sidebar.style.top = result.ewSidebarTop;
+        if (result.ewSidebarLeft) sidebar.style.left = result.ewSidebarLeft;
+        // If left is restored, right should be auto
+        if (result.ewSidebarLeft && result.ewSidebarLeft !== 'auto') sidebar.style.right = 'auto'; 
+
+        if (result.ewSidebarWidth) sidebar.style.width = result.ewSidebarWidth;
+        if (result.ewSidebarHeight) sidebar.style.height = result.ewSidebarHeight;
       }
       loadAndApplyFontSize();
     });
   } else {
+    // Fallback if chrome.storage is not available
     sidebar.classList.add('ew-sidebar-collapsed');
     if (sidebarToggle) sidebarToggle.textContent = '>';
     applyFontSize(ewFontSizeMultiplier); 
@@ -399,12 +411,18 @@ function ewOnMouseUp() {
   document.documentElement.style.userSelect = 'auto';
   document.documentElement.removeEventListener('mousemove', ewOnMouseMove);
   if (chrome.runtime?.id) {
-    chrome.storage.local.set({ ewSidebarTop: sidebar.style.top, ewSidebarLeft: sidebar.style.left });
+    // Save the final dragged position
+    chrome.storage.local.set({ 
+        ewSidebarTop: sidebar.style.top, 
+        ewSidebarLeft: sidebar.style.left,
+        // Also save current dimensions when drag ends, as dragging might be combined with resizing implicitly
+        ewSidebarWidth: sidebar.style.width, 
+        ewSidebarHeight: sidebar.style.height 
+    });
   }
 }
 
 function removeUI() {
-  // This function will only be effective if sidebar exists (i.e. in top frame)
   if (sidebar) { 
     sidebar.remove();
     sidebar = null;
@@ -418,7 +436,6 @@ function removeUI() {
 }
 
 function triggerTranslation(text) {
-  // Message handlers are iframe-aware.
   if (!isExtensionEnabled || !text) return;
   if (chrome.runtime?.id) {
     chrome.storage.sync.get(['writingStyle'], (settings) => {
@@ -426,7 +443,6 @@ function triggerTranslation(text) {
       if (chrome.runtime?.id) {
         chrome.runtime.sendMessage({ type: 'TRANSLATE_TEXT', text: text, style: settings.writingStyle }, (response) => {
           if (chrome.runtime.lastError) console.error("Error sending message:", chrome.runtime.lastError.message);
-          // Response handling is done by message listeners
         });
       }
     });
@@ -434,7 +450,6 @@ function triggerTranslation(text) {
 }
 
 function createSidebar() {
-  // **MODIFIED**: Added iframe check
   if (window.self !== window.top) {
     console.log("EW_CONTENT: Attempted to create sidebar in an iframe, aborted.");
     return;
@@ -443,15 +458,19 @@ function createSidebar() {
 
   sidebar = document.createElement('div');
   sidebar.id = 'ew-sidebar';
-  sidebar.classList.add('ew-sidebar-collapsed'); 
+  // Class 'ew-sidebar-collapsed' is added by applyInitialSidebarStateAndSettings based on stored state
 
   sidebarToggle = document.createElement('div');
   sidebarToggle.id = 'ew-sidebar-toggle';
-  sidebarToggle.textContent = '>'; 
+  // textContent for toggle is set by applyInitialSidebarStateAndSettings
   sidebarToggle.addEventListener('click', () => {
     if (!sidebar) return; 
     const isCollapsed = sidebar.classList.contains('ew-sidebar-collapsed');
-    if (isCollapsed) ewHandleSidebarExpand(); else ewHandleSidebarCollapse();
+    if (isCollapsed) {
+      ewHandleSidebarExpand();
+    } else {
+      ewHandleSidebarCollapse();
+    }
   });
 
   sidebarContent = document.createElement('div');
@@ -461,8 +480,7 @@ function createSidebar() {
   ewSidebarHeader = document.createElement('h4'); 
   ewSidebarHeader.id = 'ew-sidebar-header'; 
   ewSidebarHeader.textContent = "英文寫法";
-  ewSidebarHeader.style.margin = "0 0 10px 0";
-  ewSidebarHeader.style.padding = "0";
+  // Inline styles for margin and padding removed, will be handled by CSS
   ewSidebarHeader.addEventListener('mousedown', ewOnMouseDown);
 
   const fontControlsContainer = document.createElement('div');
@@ -514,26 +532,86 @@ function createSidebar() {
   sidebar.appendChild(resizeHandleLeft);
   sidebar.appendChild(resizeHandleBottom);
   document.body.appendChild(sidebar);
+  
+  // Initial state application is now primarily in initializeUI via applyInitialSidebarStateAndSettings
 }
 
 function ewHandleSidebarExpand() {
   if (!sidebar || !sidebarToggle) return;
+
+  // Ensure it's positioned correctly for expansion at the default edge
   sidebar.style.left = 'auto';
   sidebar.style.right = '0px';
   sidebar.style.top = '20%'; 
+  
+  // Remove the collapsed class to trigger the transform animation
+  // Make sure transform is cleared if it was set to translateX directly for some reason
+  sidebar.style.transform = ''; // Clear any direct transform
   sidebar.classList.remove('ew-sidebar-collapsed');
   sidebarToggle.textContent = '<';
-  if (chrome.runtime?.id) chrome.storage.local.set({ sidebarCollapsed: false });
+
+  if (chrome.runtime?.id) {
+    chrome.storage.local.set({ sidebarCollapsed: false });
+  }
 }
 
 function ewHandleSidebarCollapse() {
   if (!sidebar || !sidebarToggle) return;
-  sidebar.style.left = 'auto';
-  sidebar.style.right = '0px'; 
-  sidebar.style.top = '20%'; 
-  sidebar.classList.add('ew-sidebar-collapsed');
-  sidebarToggle.textContent = '>';
-  if (chrome.runtime?.id) chrome.storage.local.set({ sidebarCollapsed: true });
+
+  const sidebarRect = sidebar.getBoundingClientRect();
+  const windowWidth = window.innerWidth;
+  const defaultTopPercentage = 20; 
+  const defaultTopPx = window.innerHeight * (defaultTopPercentage / 100);
+  const threshold = 5; 
+  
+  // Check if sidebar.style.right is already '0px' and sidebar.style.left is 'auto' or empty
+  const isAlreadyDockedRight = (sidebar.style.right === '0px' || sidebar.style.right === '') && 
+                               (sidebar.style.left === 'auto' || sidebar.style.left === '');
+  const isAtDefaultRightEdge = Math.abs(sidebarRect.right - windowWidth) < threshold;
+  const isAtDefaultTop = Math.abs(sidebarRect.top - defaultTopPx) < threshold;
+
+  // If the sidebar is dragged away from the default edge/top, or not programmatically set to default
+  if (!isAlreadyDockedRight || !isAtDefaultRightEdge || !isAtDefaultTop) {
+    // Set current position explicitly if not already using left/top for positioning.
+    // This ensures the transition starts from the visual position.
+    if (sidebar.style.left === 'auto' || sidebar.style.left === '') {
+        sidebar.style.left = sidebarRect.left + 'px';
+        sidebar.style.top = sidebarRect.top + 'px';
+        sidebar.style.right = 'auto'; 
+    }
+
+
+    setTimeout(() => {
+      sidebar.style.left = 'auto';
+      sidebar.style.right = '0px';
+      sidebar.style.top = '20%'; 
+
+      const handlePositionTransitionEnd = (event) => {
+        if (event.target === sidebar && (event.propertyName === 'right' || event.propertyName === 'top' || event.propertyName === 'left')) {
+          sidebar.removeEventListener('transitionend', handlePositionTransitionEnd);
+          
+          sidebar.classList.add('ew-sidebar-collapsed');
+          sidebarToggle.textContent = '>';
+          if (chrome.runtime?.id) {
+            chrome.storage.local.set({ sidebarCollapsed: true });
+          }
+        }
+      };
+      sidebar.addEventListener('transitionend', handlePositionTransitionEnd);
+    }, 0); 
+
+  } else {
+    // If already at (or very near) the default position, just collapse directly.
+    sidebar.style.left = 'auto';
+    sidebar.style.right = '0px';
+    sidebar.style.top = '20%';
+    
+    sidebar.classList.add('ew-sidebar-collapsed');
+    sidebarToggle.textContent = '>';
+    if (chrome.runtime?.id) {
+      chrome.storage.local.set({ sidebarCollapsed: true });
+    }
+  }
 }
 
 if (isExtensionEnabled) {

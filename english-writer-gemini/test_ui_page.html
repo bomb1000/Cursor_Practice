@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>EW UI Test</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>English Writer UI Test Page</h1>
+    <p>This page loads content.js and styles.css to check for errors and basic element creation.</p>
+    <script>
+        // Mock chrome.runtime and chrome.storage for content.js to run without errors
+        if (typeof chrome === "undefined" || !chrome.runtime) {
+            window.chrome = {
+                runtime: {
+                    id: "test-extension-id", // Mock extension ID
+                    onMessage: {
+                        addListener: function(callback) { console.log("Mock chrome.runtime.onMessage.addListener called"); },
+                        removeListener: function(callback) { console.log("Mock chrome.runtime.onMessage.removeListener called"); }
+                    },
+                    sendMessage: function(message, callback) {
+                        console.log("Mock chrome.runtime.sendMessage called with:", message);
+                        if (message.type === "GET_SHORTCUT_INFO") {
+                            if (callback) setTimeout(() => callback({ shortcut: "Ctrl+Shift+S (mock)" }), 0);
+                        }
+                        // Add other message type mocks if content.js makes other calls on init
+                        return true;
+                    },
+                    lastError: null
+                },
+                storage: {
+                    sync: {
+                        get: function(keys, callback) {
+                            console.log("Mock chrome.storage.sync.get called with:", keys);
+                            // Provide default values to allow content.js to initialize
+                            if (callback) setTimeout(() => callback({ isEnabled: true, writingStyle: 'formal' }), 0);
+                        },
+                        set: function(items, callback) {
+                            console.log("Mock chrome.storage.sync.set called with:", items);
+                            if (callback) callback();
+                        }
+                    },
+                    local: {
+                        get: function(keys, callback) {
+                            console.log("Mock chrome.storage.local.get called with:", keys);
+                            // Provide default values
+                            if (callback) setTimeout(() => callback({ sidebarCollapsed: false, fontSizeMultiplier: 1.0 }), 0); // Default to not collapsed for testing UI
+                        },
+                        set: function(items, callback) {
+                            console.log("Mock chrome.storage.local.set called with:", items);
+                            if (callback) callback();
+                        }
+                    }
+                }
+            };
+        }
+    </script>
+    <script src="content.js"></script>
+</body>
+</html>
