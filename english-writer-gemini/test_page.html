@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Main Page</title>
+</head>
+<body>
+    <h1>Main Page Content</h1>
+    <p>This is the main page.</p>
+    <iframe srcdoc="<html><head><title>Iframe Page</title></head><body><h2>Iframe Content</h2><p>This is an iframe.</p></body></html>" style="width: 500px; height: 300px; border: 1px solid black;"></iframe>
+    
+    <script>
+    // Simulate parts of the extension environment for content.js if needed
+    // For example, chrome.runtime.onMessage might need a mock if content.js
+    // expects it to be present immediately.
+    // However, the primary test is the createSidebar() call guard.
+    
+    // Function to simulate injecting and running content.js
+    function simulateContentScript(docContext, frameName) {
+        console.log(`Simulating content script injection for: ${frameName}`);
+        
+        // Store original console.log to restore later and capture logs
+        const originalConsoleLog = docContext.console.log;
+        const logs = [];
+        docContext.console.log = (...args) => {
+            logs.push(args.join(' '));
+            // Call the original console.log via the main page's console
+            // to ensure it's captured by the headless browser.
+            window.console.log(`[${frameName} CONSOLE]`, ...args);
+        };
+
+        // Mock chrome.storage.sync.get and chrome.runtime.id for content.js initialization
+        if (!docContext.chrome) docContext.chrome = {};
+        if (!docContext.chrome.runtime) docContext.chrome.runtime = {};
+        if (!docContext.chrome.runtime.id) docContext.chrome.runtime.id = 'test-extension-id';
+        if (!docContext.chrome.storage) docContext.chrome.storage = {};
+        if (!docContext.chrome.storage.sync) docContext.chrome.storage.sync = {
+            get: (keys, callback) => {
+                // Simulate async callback with default values
+                setTimeout(() => callback({ isEnabled: true, writingStyle: 'Standard' }), 0);
+            }
+        };
+         if (!docContext.chrome.storage.local) docContext.chrome.storage.local = {
+            get: (keys, callback) => {
+                const result = {};
+                if (Array.isArray(keys)) {
+                    keys.forEach(key => result[key] = undefined);
+                } else {
+                    result[keys] = undefined;
+                }
+                setTimeout(() => callback(result), 0);
+            },
+            set: (items, callback) => {
+                setTimeout(() => {
+                    if (callback) callback();
+                }, 0);
+            }
+        };
+        if (!docContext.chrome.runtime.onMessage) {
+            docContext.chrome.runtime.onMessage = {
+                addListener: (listener) => {
+                    // Mock addListener
+                    window.console.log(`[${frameName} CHROME.RUNTIME.ONMESSAGE] addListener called`);
+                }
+            };
+        }
+        if (!docContext.chrome.runtime.sendMessage) {
+             docContext.chrome.runtime.sendMessage = (message, callback) => {
+                window.console.log(`[${frameName} CHROME.RUNTIME.SENDMESSAGE] called with message:`, message);
+                if (message.type === "GET_SHORTCUT_INFO") {
+                    if (callback) setTimeout(() => callback({ shortcut: "Ctrl+Shift+S" }), 0);
+                } else if (callback) {
+                    setTimeout(() => callback({}), 0);
+                }
+            };
+        }
+
+
+        // Create a script element to load content.js
+        const script = docContext.createElement('script');
+        script.src = './content.js'; // Assuming content.js is in the same directory
+        script.onload = () => {
+            window.console.log(`content.js loaded in ${frameName}`); // Use main window console
+            // Restore console.log
+            docContext.console.log = originalConsoleLog;
+            // Report captured logs for this frame (already done by redirecting to window.console.log)
+
+            // Check if sidebar was created in this context
+            const sidebarExists = docContext.getElementById('ew-sidebar');
+            window.console.log(`${frameName} - Sidebar element exists: ${!!sidebarExists}`);
+            if (sidebarExists) {
+                window.console.log(`${frameName} - Sidebar HTML (first 100 chars): ${sidebarExists.outerHTML.substring(0, 100)}...`);
+            }
+        };
+        script.onerror = () => {
+            window.console.log(`Error loading content.js in ${frameName}`); // Use main window console
+            docContext.console.log = originalConsoleLog;
+        };
+        docContext.head.appendChild(script);
+    }
+
+    // Simulate for the main page
+    simulateContentScript(document, "Main Page");
+
+    // Simulate for the iframe
+    const iframe = document.querySelector('iframe');
+    iframe.onload = function() {
+        // Wait for iframe to be fully loaded before trying to access its contentDocument
+        try {
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            if (iframeDoc) {
+                // It's important that the iframe also has its console redirected if we want to capture
+                // logs from within its execution of content.js in the same way.
+                // The simulateContentScript function already does this.
+                simulateContentScript(iframeDoc, "Iframe");
+            } else {
+                console.error("Could not access iframe document.");
+            }
+        } catch (e) {
+            console.error("Error accessing iframe content:", e);
+        }
+    };
+    </script>
+</body>
+</html>
