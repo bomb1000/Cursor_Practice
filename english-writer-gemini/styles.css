@@ -1,31 +1,39 @@
 /* Global variables for colors (optional, but good for consistency) */
 :root {
-  /* New Deeper Lavender Theme Variables */
-  --ew-lavender-bg: #dcd0ff; /* Deeper lavender for main background */
-  --ew-lavender-bg-light: #e8e0ff; /* Lighter shade for accents or hover */
-  --ew-lavender-accent: #c9b0ff; /* Accent color, darker than bg */
-  --ew-lavender-accent-dark: #b090f0; /* Darker accent for borders or hover */
-  --ew-lavender-text-primary: #3d2f5c; /* Dark purple/indigo for primary text on lavender */
-  --ew-lavender-text-secondary: #53427a; /* Slightly lighter for secondary text */
-  --ew-lavender-button-bg: #c0a8f0; /* Button background */
-  --ew-lavender-button-hover-bg: #b090f0; /* Button hover background */
-  --ew-lavender-button-border: #a078e0; /* Button border */
+  /* High Fashion Lavender Theme Variables */
+  --ew-lavender-bg: #dcd0ff;                     /* Main sidebar background */
+  --ew-lavender-content-bg: #f4efff;             /* Very light lavender for content area */
+  
+  --ew-lavender-text-primary: #301934;           /* Deep, rich purple (almost black) for primary text */
+  --ew-lavender-text-secondary: #4a2c5a;         /* Slightly lighter, but still strong purple for secondary text */
+  
+  --ew-themed-button-bg: #a987d9;                /* Dusty plum/lavender for buttons */
+  --ew-themed-button-text: #ffffff;               /* White text for buttons */
+  --ew-themed-button-border: #8a6bbd;            /* Slightly darker plum for button borders */
+  --ew-themed-button-hover-bg: #8a6bbd;          /* Button border color becomes background on hover */
+  --ew-themed-button-hover-text: #ffffff;         /* Text remains white on hover */
+  --ew-themed-button-hover-border: #6c4f9d;      /* Deeper plum for hover border */
+  
+  --ew-header-text-color: var(--ew-lavender-text-primary); /* Strong readability for header */
+  
+  --ew-lavender-accent: #cab9e8;                 /* Lighter, desaturated lavender for separators/borders */
+  --ew-lavender-accent-dark: #8a6bbd;            /* Stronger accent (matches button border) */
 
-  /* Gradient for collapsed toggle */
-  --ew-lavender-gradient-start: #d0c0f0; /* Deeper start for gradient */
-  --ew-lavender-gradient-end: #bca8e0;   /* Deeper end for gradient */
-  --ew-lavender-gradient-hover-start: #c0b0e0;
-  --ew-lavender-gradient-hover-end: #ac98d0;
+  /* Adjusted Gradient for collapsed toggle for Harmony */
+  --ew-lavender-gradient-start: #c0b0e0;
+  --ew-lavender-gradient-end: #a088c0;
+  --ew-lavender-gradient-hover-start: #b0a0d0;
+  --ew-lavender-gradient-hover-end: #9078b0;
 
-  /* Resize Handle Color */
-  --ew-resize-handle-border-color: var(--ew-lavender-accent-dark); /* Using an existing theme variable */
+  /* Resize Handle Color - will use an accent color */
+  --ew-resize-handle-border-color: var(--ew-lavender-accent-dark);
 }
 
 /* 下方長條文字框 */
 #ew-bottom-bar {
   position: absolute;
-  background-color: var(--ew-lavender-bg-light); /* Updated to new theme */
-  border: 1px solid var(--ew-lavender-accent); /* Updated to new theme */
+  background-color: var(--ew-lavender-content-bg); /* Using new content background */
+  border: 1px solid var(--ew-lavender-accent); 
   border-radius: 4px;
   padding: 5px 8px;
   font-size: 13px;
@@ -45,12 +53,12 @@
   top: 20%; 
   right: 0;
   width: 300px; /* Slightly wider for a more modern feel, adjust as needed */
-  height: auto; /* Consider max-height relative to viewport */
+  height: calc(100vh - 40px); /* Explicit height matching max-height */
   min-height: 150px; /* Increased min-height */
   max-height: calc(100vh - 40px); /* Example: leave some space from top/bottom */
-  background-color: var(--ew-lavender-bg);
-  color: var(--ew-lavender-text-primary);
-  border: 1px solid var(--ew-lavender-accent-dark);
+  background-color: var(--ew-lavender-bg); /* Main sidebar background */
+  color: var(--ew-lavender-text-primary); /* Default text color for the sidebar */
+  border: 1px solid var(--ew-lavender-accent-dark); /* Border for the sidebar */
   border-right: none; /* Usually side panels don't have a border on the edge they attach to */
   border-radius: 8px 0 0 8px; /* Rounded corners on the left side */
   box-shadow: 0 1px 2px 0 rgba(60,64,67,.3), 0 2px 6px 2px rgba(60,64,67,.15); /* Google-like shadow */
@@ -76,40 +84,42 @@
   left: 0px;
   top: 50%;
   transform: translateY(-50%);
-  width: 24px; /* Slightly wider toggle */
-  height: 48px; /* Taller toggle */
-  background-color: var(--ew-lavender-button-bg);
-  border: 1px solid var(--ew-lavender-button-border);
-  border-right: none; /* Important */
-  border-top-left-radius: 6px; /* Match sidebar rounding */
-  border-bottom-left-radius: 6px; /* Match sidebar rounding */
+  width: 24px; 
+  height: 48px; 
+  background-color: var(--ew-themed-button-bg);
+  border: 1px solid var(--ew-themed-button-border);
+  border-right: none; 
+  border-top-left-radius: 6px; 
+  border-bottom-left-radius: 6px; 
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: bold; 
-  color: var(--ew-lavender-text-primary);
+  color: var(--ew-themed-button-text);
   user-select: none;
-  box-shadow: -1px 0px 2px rgba(0,0,0,.1); /* Keep a subtle shadow */
+  box-shadow: -1px 0px 2px rgba(0,0,0,.1); 
 }
 #ew-sidebar-toggle:hover {
-  background-color: var(--ew-lavender-button-hover-bg);
-  border-color: var(--ew-lavender-accent-dark);
+  background-color: var(--ew-themed-button-hover-bg);
+  color: var(--ew-themed-button-hover-text);
+  border-color: var(--ew-themed-button-hover-border);
+  border-right: none; /* Ensure consistency */
 }
 
 /* Styles for the toggle when the sidebar is collapsed */
 #ew-sidebar.ew-sidebar-collapsed #ew-sidebar-toggle {
   background: linear-gradient(135deg, var(--ew-lavender-gradient-start) 0%, var(--ew-lavender-gradient-end) 100%);
-  border-color: var(--ew-lavender-accent-dark);
-  color: #ffffff; /* White color for the '>' text for better contrast */
+  border-color: var(--ew-lavender-accent-dark); /* Using the stronger accent for border */
+  color: var(--ew-themed-button-text); /* Consistent with other button text */
   border-right: none; 
 }
 
 #ew-sidebar.ew-sidebar-collapsed #ew-sidebar-toggle:hover {
   background: linear-gradient(135deg, var(--ew-lavender-gradient-hover-start) 0%, var(--ew-lavender-gradient-hover-end) 100%);
-  border-color: var(--ew-lavender-accent-dark); /* Consistent with non-hover collapsed border */
+  border-color: var(--ew-lavender-accent-dark); 
   border-right: none;
-  /* color: #ffffff; */ 
+  /* color: var(--ew-themed-button-text); */ /* Text color likely remains the same */
 }
 
 #ew-sidebar-fixed-controls {
@@ -125,10 +135,10 @@
   flex-shrink: 0;
   font-size: 1em; /* Adjust if needed, relative to sidebar's base font */
   font-weight: 600; /* Slightly bolder */
-  color: var(--ew-lavender-text-primary);
+  color: var(--ew-header-text-color); /* Specific header text color */
   margin: 0 0 12px 0; /* Increased margin, manage all margin here */
   padding: 0 0 8px 0; /* Add padding for separation, manage all padding here */
-  border-bottom: 1px solid var(--ew-lavender-accent);
+  border-bottom: 1px solid var(--ew-lavender-accent); /* Separator line */
 }
 
 #ew-font-controls {
@@ -137,7 +147,7 @@
   align-items: center;
   padding: 8px 0; 
   margin-bottom: 10px; 
-  border-bottom: 1px solid #e8eaed; /* Subtle separator */
+  border-bottom: 1px solid var(--ew-lavender-accent); /* Updated border color */
   flex-shrink: 0;
 }
 
@@ -146,30 +156,30 @@
   color: var(--ew-lavender-text-secondary);
   margin-bottom: 10px; 
   padding-bottom: 8px; 
-  border-bottom: 1px solid var(--ew-lavender-accent);
+  border-bottom: 1px solid var(--ew-lavender-accent); /* Consistent separator */
   text-align: center; 
   flex-shrink: 0; 
 }
 
 #ew-sidebar-content {
-  flex-grow: 1; /* Allows this element to take up available vertical space */
-  overflow-y: auto; /* Enables vertical scrolling ONLY for this element */
-  min-height: 50px; /* Or a suitable minimum height */
-  padding: 8px; /* Retain or adjust existing padding */
-  margin-bottom: 0; /* Remove margin-bottom as copy button is now in fixed controls */
-  word-wrap: break-word; /* Existing good properties */
-  overflow-wrap: break-word; /* Existing good properties */
-  white-space: pre-wrap;  /* Existing good properties */
-  word-break: break-word; /* Existing good properties */
-  font-size: 0.9em; /* Existing good properties */
-  color: var(--ew-lavender-text-primary); 
+  flex-grow: 1; 
+  overflow-y: auto; 
+  min-height: 0; 
+  padding: 8px; 
+  margin-bottom: 0; 
+  word-wrap: break-word; 
+  overflow-wrap: break-word; 
+  white-space: pre-wrap;  
+  word-break: break-word; 
+  font-size: 0.9em; 
+  background-color: var(--ew-lavender-content-bg); /* New background */
+  color: #000000; /* Black text as requested */
 } 
 
 #ew-copy-button {
-  /* background-color, color, border, padding, text-align, text-decoration, font-size, border-radius, cursor are already defined */
-  background-color: var(--ew-lavender-button-bg);
-  color: white;
-  border: none;
+  background-color: var(--ew-themed-button-bg);
+  color: var(--ew-themed-button-text);
+  border: 1px solid var(--ew-themed-button-border);
   padding: 8px 16px;
   text-align: center;
   text-decoration: none;
@@ -177,18 +187,19 @@
   font-weight: 500;
   border-radius: 4px;
   cursor: pointer;
-  display: block; /* Ensure it takes appropriate width */
-  width: 100%;  /* Make it full width of the fixed controls area */
-  box-sizing: border-box; /* Include padding in its width */
-  margin-top: 8px; /* Add some space above it, separating from shortcut display or font controls */
-  flex-shrink: 0; /* Already present, good */
-  transition: background-color 0.2s ease; /* Already present, good */
-  /* align-self: flex-end; /* No longer needed, width is 100% */
+  display: block; 
+  width: 100%;  
+  box-sizing: border-box; 
+  margin-top: 8px; 
+  flex-shrink: 0; 
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 #ew-copy-button:hover {
-  background-color: var(--ew-lavender-button-hover-bg); /* Updated to lavender theme */
-  box-shadow: 0 1px 1px 0 rgba(0,0,0,.1); /* Subtle shadow on hover */
+  background-color: var(--ew-themed-button-hover-bg);
+  color: var(--ew-themed-button-hover-text);
+  border-color: var(--ew-themed-button-hover-border);
+  box-shadow: 0 1px 1px 0 rgba(0,0,0,.1); 
 }
 
 /* Optional: Styles for a disabled state if you choose to use it
@@ -200,8 +211,8 @@
 
 .ew-loading-spinner {
   display: inline-block;
-  border: 3px solid var(--ew-lavender-bg-light);
-  border-top: 3px solid var(--ew-lavender-accent-dark);
+  border: 3px solid var(--ew-lavender-accent); /* Lighter accent for the track */
+  border-top: 3px solid var(--ew-lavender-accent-dark); /* Darker accent for the spinner itself */
   border-radius: 50%;
   width: 1.2em; 
   height: 1.2em;
