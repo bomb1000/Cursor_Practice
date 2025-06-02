@@ -29,7 +29,7 @@ let domReady = (document.readyState === "complete" || document.readyState === "i
 let settingsLoaded = false; // Flag to track if settings are loaded
 
 function attemptInitialize() {
-    console.log("EW_CONTENT_DEBUG: attemptInitialize called. domReady:", domReady, "settingsLoaded:", settingsLoaded, "isExtensionEnabled:", isExtensionEnabled);
+    // console.log("EW_CONTENT_DEBUG: attemptInitialize called. domReady:", domReady, "settingsLoaded:", settingsLoaded, "isExtensionEnabled:", isExtensionEnabled);
     if (domReady && settingsLoaded && isExtensionEnabled) {
         console.log("EW_CONTENT: DOM ready, settings loaded, and extension enabled. Initializing UI.");
         initializeUI();
@@ -168,31 +168,30 @@ try {
 
 // Initialize UI elements and event listeners
 function initializeUI() {
-  try {
-    console.log("EW_CONTENT_DEBUG: initializeUI called.");
+    // console.log("EW_CONTENT_DEBUG: initializeUI called.");
     if (window.self !== window.top) {
-      console.log("EW_CONTENT_DEBUG: initializeUI: In an iframe, skipping.");
+      // console.log("EW_CONTENT_DEBUG: initializeUI: In an iframe, skipping.");
       return;
     }
 
-    console.log("EW_CONTENT_DEBUG: initializeUI: Top window, proceeding.");
+    // console.log("EW_CONTENT_DEBUG: initializeUI: Top window, proceeding.");
 
     if (!document.getElementById('ew-sidebar')) {
-      console.log("EW_CONTENT_DEBUG: initializeUI: #ew-sidebar not found, calling createSidebar().");
+      // console.log("EW_CONTENT_DEBUG: initializeUI: #ew-sidebar not found, calling createSidebar().");
       createSidebar();
     } else {
-      console.log("EW_CONTENT_DEBUG: initializeUI: #ew-sidebar already exists.");
+      // console.log("EW_CONTENT_DEBUG: initializeUI: #ew-sidebar already exists.");
     }
 
     if (!document.getElementById('q-fab-button')) {
-      console.log("EW_CONTENT_DEBUG: initializeUI: #q-fab-button not found, calling createFabButton().");
+      // console.log("EW_CONTENT_DEBUG: initializeUI: #q-fab-button not found, calling createFabButton().");
       createFabButton();
     } else {
-      console.log("EW_CONTENT_DEBUG: initializeUI: #q-fab-button already exists.");
+      // console.log("EW_CONTENT_DEBUG: initializeUI: #q-fab-button already exists.");
     }
 
     if (document.getElementById('ew-sidebar') && !document.getElementById('ew-font-controls') && sidebar) {
-        console.log("EW_CONTENT_DEBUG: initializeUI: Re-adding font controls.");
+        // console.log("EW_CONTENT_DEBUG: initializeUI: Re-adding font controls.");
         const fontControlsContainer = document.createElement('div');
         fontControlsContainer.id = 'ew-font-controls';
         const newFontDecreaseButton = document.createElement('button');
@@ -218,7 +217,7 @@ function initializeUI() {
         newFontIncreaseButton.ewListenerAttached = true;
     }
 
-    console.log("EW_CONTENT_DEBUG: initializeUI: Calling applyInitialSidebarStateAndSettings().");
+    // console.log("EW_CONTENT_DEBUG: initializeUI: Calling applyInitialSidebarStateAndSettings().");
     applyInitialSidebarStateAndSettings();
 
     const fontDecreaseButton = document.getElementById('ew-font-decrease');
@@ -237,11 +236,15 @@ function initializeUI() {
       chrome.runtime.sendMessage({ type: "GET_SHORTCUT_INFO" }, (response) => {
         const shortcutDiv = document.getElementById('ew-shortcut-display');
         if (!shortcutDiv) {
-            console.warn("EW_CONTENT_DEBUG: initializeUI: Shortcut display div not found.");
+            // console.warn("EW_CONTENT_DEBUG: initializeUI: Shortcut display div not found.");
+            // Keep original warnings if any, or remove if they were debug only
+            console.warn("EW: Shortcut display div not found.");
             return;
         }
         if (chrome.runtime.lastError) {
-          console.error("EW_CONTENT_DEBUG: initializeUI: Error getting shortcut info:", chrome.runtime.lastError.message);
+          // console.error("EW_CONTENT_DEBUG: initializeUI: Error getting shortcut info:", chrome.runtime.lastError.message);
+          // Keep original errors if any
+          console.error("EW: Error getting shortcut info:", chrome.runtime.lastError.message);
           shortcutDiv.textContent = 'Shortcut: Error';
           return;
         }
@@ -257,10 +260,7 @@ function initializeUI() {
           shortcutDiv.textContent = 'Shortcut: N/A';
       }
     }
-    console.log("EW_CONTENT_DEBUG: initializeUI completed.");
-  } catch (e) {
-    console.error("EW_CONTENT_DEBUG: initializeUI - CRITICAL ERROR:", e);
-  }
+    // console.log("EW_CONTENT_DEBUG: initializeUI completed.");
 }
 
 // MODIFIED applyFontSize function
@@ -490,14 +490,14 @@ function triggerTranslation(text) {
 }
 
 function createSidebar() {
-  try {
-    console.log("EW_CONTENT_DEBUG: createSidebar called.");
+    // console.log("EW_CONTENT_DEBUG: createSidebar called.");
     if (window.self !== window.top) {
-      console.log("EW_CONTENT_DEBUG: createSidebar: In an iframe, aborted.");
+      // console.log("EW_CONTENT_DEBUG: createSidebar: In an iframe, aborted.");
+      console.log("EW_CONTENT: Attempted to create sidebar in an iframe, aborted."); // Keep original if it was this
       return;
     }
     if (document.getElementById('ew-sidebar')) {
-      console.log("EW_CONTENT_DEBUG: createSidebar: #ew-sidebar already exists. Returning.");
+      // console.log("EW_CONTENT_DEBUG: createSidebar: #ew-sidebar already exists. Returning.");
       return;
     }
 
@@ -581,17 +581,17 @@ function createSidebar() {
   sidebar.appendChild(resizeHandleBottom);
   sidebar.appendChild(resizeHandleTop);
   sidebar.appendChild(resizeHandleRight);
-  console.log("EW_CONTENT_DEBUG: createSidebar: Main sidebar element and children created. Attempting to append to document.body.");
+  // console.log("EW_CONTENT_DEBUG: createSidebar: Main sidebar element and children created. Attempting to append to document.body.");
   if (!document.body) {
-      console.error("EW_CONTENT_DEBUG: createSidebar: document.body is not available!");
+      // console.error("EW_CONTENT_DEBUG: createSidebar: document.body is not available!");
+      // Decide if this is a critical error to keep, or if the script would fail anyway.
+      // For now, assuming it's a critical scenario that should be logged if it occurs.
+      console.error("EW_CONTENT: createSidebar: document.body is not available! Cannot append sidebar.");
       return;
   }
   document.body.appendChild(sidebar);
-  console.log("EW_CONTENT_DEBUG: createSidebar: Main sidebar element appended to document.body.");
-  console.log("EW_CONTENT_DEBUG: createSidebar completed.");
-  } catch (e) {
-    console.error("EW_CONTENT_DEBUG: createSidebar - CRITICAL ERROR:", e);
-  }
+  // console.log("EW_CONTENT_DEBUG: createSidebar: Main sidebar element appended to document.body.");
+  // console.log("EW_CONTENT_DEBUG: createSidebar completed.");
 }
 
 function ewHandleSidebarExpand() {
@@ -695,10 +695,9 @@ function ewHandleSidebarCollapse() {
 
 // Function to create the FAB
 function createFabButton() {
-  try {
-    console.log("EW_CONTENT_DEBUG: createFabButton called.");
+    // console.log("EW_CONTENT_DEBUG: createFabButton called.");
     if (document.getElementById('q-fab-button')) {
-        console.log("EW_CONTENT_DEBUG: createFabButton: #q-fab-button already exists. Returning.");
+        // console.log("EW_CONTENT_DEBUG: createFabButton: #q-fab-button already exists. Returning.");
         return;
     }
 
@@ -706,13 +705,14 @@ function createFabButton() {
     fabButton.id = 'q-fab-button';
     fabButton.textContent = 'Q';
 
-    console.log("EW_CONTENT_DEBUG: createFabButton: fabButton element created. Attempting to append to document.body.");
+    // console.log("EW_CONTENT_DEBUG: createFabButton: fabButton element created. Attempting to append to document.body.");
     if (!document.body) {
-        console.error("EW_CONTENT_DEBUG: createFabButton: document.body is not available!");
+        // console.error("EW_CONTENT_DEBUG: createFabButton: document.body is not available!");
+        console.error("EW_CONTENT: createFabButton: document.body is not available! Cannot append FAB.");
         return;
     }
     document.body.appendChild(fabButton);
-    console.log("EW_CONTENT_DEBUG: createFabButton: fabButton appended to document.body.");
+    // console.log("EW_CONTENT_DEBUG: createFabButton: fabButton appended to document.body.");
 
     // Add event listener here:
     if (!fabButton.ewFabListenerAttached) {
@@ -727,12 +727,9 @@ function createFabButton() {
             }
         });
         fabButton.ewFabListenerAttached = true; // Mark listener as attached
-        console.log("EW_CONTENT_DEBUG: createFabButton: Event listener attached.");
+        // console.log("EW_CONTENT_DEBUG: createFabButton: Event listener attached.");
     }
-    console.log("EW_CONTENT_DEBUG: createFabButton completed.");
-  } catch (e) {
-    console.error("EW_CONTENT_DEBUG: createFabButton - CRITICAL ERROR:", e);
-  }
+    // console.log("EW_CONTENT_DEBUG: createFabButton completed.");
 }
 
 // Old initialization block removed as per refactoring.
