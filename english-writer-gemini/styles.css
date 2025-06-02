@@ -66,7 +66,7 @@
   padding: 12px; /* Main padding, padding-left for toggle removed */
   /* padding-left: 22px; */ /* REMOVED */
   box-sizing: border-box;
-  /* overflow: hidden; */ /* REMOVED */
+  overflow: hidden; /* RESTORED */
   font-family: 'Roboto', 'Arial', sans-serif;
   font-size: 14px;
   line-height: 1.5;
