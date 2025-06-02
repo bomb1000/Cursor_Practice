@@ -62,7 +62,7 @@
   /* border-right: none; */ /* REMOVED */
   border-radius: 8px; /* CHANGED - Applied to all corners */
   box-shadow: 0 4px 15px rgba(0,0,0,0.2); /* New shadow */
-  z-index: 2147483645; /* Adjusted z-index */
+  z-index: 9999; /* Adjusted z-index */
   padding: 12px; /* Main padding, padding-left for toggle removed */
   /* padding-left: 22px; */ /* REMOVED */
   box-sizing: border-box;
