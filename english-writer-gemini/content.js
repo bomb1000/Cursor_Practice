@@ -4,6 +4,7 @@ let sidebar = null;
 let sidebarContent = null;
 let sidebarToggle = null;
 let ewSidebarHeader = null; 
+let fabButton = null; // Added fabButton
 let isExtensionEnabled = true;
 let ewFontSizeMultiplier = 1.0; 
 const EW_BASE_FONT_SIZE = 14; 
@@ -150,9 +151,19 @@ function initializeUI() {
 
   if (!document.getElementById('ew-sidebar')) {
     createSidebar(); 
-  } else {
-    if (!document.getElementById('ew-font-controls') && sidebar) {
-        const fontControlsContainer = document.createElement('div');
+  }
+  // Ensure createFabButton is called only in the top window
+  if (!document.getElementById('q-fab-button')) {
+    createFabButton();
+  }
+
+  // The following block seems to be for re-adding font controls if sidebar exists but controls don't.
+  // This might need review depending on how often initializeUI is called or if sidebar can exist without full init.
+  // For now, keeping its logic but it's separate from FAB button creation.
+  if (document.getElementById('ew-sidebar') && !document.getElementById('ew-font-controls') && sidebar) {
+    // This 'sidebar' variable check is crucial if createSidebar() might not have run or completed.
+    // If createSidebar() guarantees 'sidebar' is set when 'ew-sidebar' element exists, then it's fine.
+    const fontControlsContainer = document.createElement('div');
         fontControlsContainer.id = 'ew-font-controls';
         const newFontDecreaseButton = document.createElement('button');
         newFontDecreaseButton.id = 'ew-font-decrease';
@@ -258,59 +269,18 @@ function applyInitialSidebarStateAndSettings() {
     return;
   }
 
-  applyDefaultDimensions(); // Resets to default CSS position (e.g., right edge, top 20%)
+  // applyDefaultDimensions(); // Removed: Initial dimensions/visibility are now CSS controlled.
+                               // Stored dimensions for drag/resize can be re-evaluated later if that feature is kept.
 
   if (chrome.runtime?.id) {
-    chrome.storage.local.get('sidebarCollapsed', (result) => {
-      if (chrome.runtime.lastError) {
-        console.error("EW_CONTENT: Error loading sidebarCollapsed state:", chrome.runtime.lastError.message);
-        // Fallback to collapsed if storage read fails
-        sidebar.classList.add('ew-sidebar-collapsed');
-        if (sidebarToggle) sidebarToggle.textContent = '>';
-        if (typeof loadAndApplyFontSize === "function") loadAndApplyFontSize();
-        return;
-      }
-
-      let storedState = result.sidebarCollapsed;
-
-      if (typeof storedState === 'undefined') {
-        console.log("EW_CONTENT: sidebarCollapsed not found in storage. Applying default: collapsed, and attempting to save.");
-        // Directly apply visual state to ensure it's immediately collapsed
-        sidebar.classList.add('ew-sidebar-collapsed');
-        if (sidebarToggle) sidebarToggle.textContent = '>';
-        
-        // Attempt to save this default state
-        // This 'set' is asynchronous. The hope is that by applying the class above synchronously,
-        // and given this is the designated 'init' function, it has a good chance.
-        chrome.storage.local.set({ sidebarCollapsed: true }, () => {
-          if (chrome.runtime.lastError) {
-            console.error("EW_CONTENT: Error saving default 'sidebarCollapsed: true' state:", chrome.runtime.lastError.message);
-          } else {
-            console.log("EW_CONTENT: Default 'sidebarCollapsed: true' state saved for undefined case.");
-          }
-        });
-      } else {
-        // Apply the loaded state
-        console.log("EW_CONTENT: sidebarCollapsed loaded from storage:", storedState);
-        if (storedState) { // true means collapsed
-          sidebar.classList.add('ew-sidebar-collapsed');
-          if (sidebarToggle) sidebarToggle.textContent = '>';
-        } else { // false means expanded
-          sidebar.classList.remove('ew-sidebar-collapsed');
-          if (sidebarToggle) sidebarToggle.textContent = '<';
-          // Ensure correct positioning for expanded state (already part of original function)
-          sidebar.style.left = 'auto';
-          sidebar.style.right = '0px';
-          sidebar.style.top = '20%'; 
-        }
-      }
-      if (typeof loadAndApplyFontSize === "function") loadAndApplyFontSize();
-    });
+    // All logic related to 'sidebarCollapsed' (reading, applying class, saving) is removed.
+    // The primary function here is now to load and apply internal settings like font size.
+    if (typeof loadAndApplyFontSize === "function") {
+      loadAndApplyFontSize();
+    }
   } else {
-    // Fallback for invalid context (e.g., during development if script reloads weirdly)
-    console.warn("EW_CONTENT: Context invalidated during applyInitialSidebarStateAndSettings, defaulting to collapsed state.");
-    sidebar.classList.add('ew-sidebar-collapsed');
-    if (sidebarToggle) sidebarToggle.textContent = '>';
+    // Fallback for invalid context
+    console.warn("EW_CONTENT: Context invalidated during applyInitialSidebarStateAndSettings.");
     if (typeof loadAndApplyFontSize === "function") loadAndApplyFontSize();
   }
 }
@@ -463,6 +433,10 @@ function removeUI() {
     sidebarToggle = null;
     ewSidebarHeader = null; 
   }
+  if (fabButton) { // Remove FAB button
+    fabButton.remove();
+    fabButton = null;
+  }
   document.documentElement.removeEventListener('mousemove', ewOnMouseMove);
   document.documentElement.removeEventListener('mouseup', ewOnMouseUp);
   document.documentElement.style.userSelect = 'auto'; 
@@ -493,18 +467,19 @@ function createSidebar() {
   sidebar.id = 'ew-sidebar';
   // Class 'ew-sidebar-collapsed' is added by applyInitialSidebarStateAndSettings based on stored state
 
-  sidebarToggle = document.createElement('div');
-  sidebarToggle.id = 'ew-sidebar-toggle';
-  // textContent for toggle is set by applyInitialSidebarStateAndSettings
-  sidebarToggle.addEventListener('click', () => {
-    if (!sidebar) return; 
-    const isCollapsed = sidebar.classList.contains('ew-sidebar-collapsed');
-    if (isCollapsed) {
-      ewHandleSidebarExpand();
-    } else {
-      ewHandleSidebarCollapse();
-    }
-  });
+  // sidebarToggle creation and event listener removed
+  // sidebarToggle = document.createElement('div');
+  // sidebarToggle.id = 'ew-sidebar-toggle';
+  // // textContent for toggle is set by applyInitialSidebarStateAndSettings
+  // sidebarToggle.addEventListener('click', () => {
+  //   if (!sidebar) return;
+  //   const isCollapsed = sidebar.classList.contains('ew-sidebar-collapsed');
+  //   if (isCollapsed) {
+  //     ewHandleSidebarExpand();
+  //   } else {
+  //     ewHandleSidebarCollapse();
+  //   }
+  // });
 
   // Create the new fixed controls wrapper
   const fixedControls = document.createElement('div');
@@ -555,7 +530,7 @@ function createSidebar() {
   fixedControls.appendChild(copyButton); // Append to fixedControls
 
   // Append elements to sidebar in the correct order
-  sidebar.appendChild(sidebarToggle);
+  // sidebar.appendChild(sidebarToggle); // sidebarToggle is removed
   sidebar.appendChild(fixedControls);    // Append the new wrapper
   sidebar.appendChild(sidebarContent);   // Append content after fixed controls
 
@@ -589,102 +564,127 @@ function createSidebar() {
 }
 
 function ewHandleSidebarExpand() {
-  if (!sidebar || !sidebarToggle) return;
-
+  // if (!sidebar || !sidebarToggle) return; // sidebarToggle removed + function body commented out
   // Ensure it's positioned correctly for expansion at the default edge
-  sidebar.style.left = 'auto';
-  sidebar.style.right = '0px';
-  sidebar.style.top = '20%'; 
+  // sidebar.style.left = 'auto';
+  // sidebar.style.right = '0px';
+  // sidebar.style.top = '20%';
   
   // Remove the collapsed class to trigger the transform animation
   // Make sure transform is cleared if it was set to translateX directly for some reason
-  sidebar.style.transform = ''; // Clear any direct transform
-  sidebar.classList.remove('ew-sidebar-collapsed');
-  sidebarToggle.textContent = '<';
+  // sidebar.style.transform = ''; // Clear any direct transform
+  // // sidebar.classList.remove('ew-sidebar-collapsed'); // Visibility managed by FAB
+  // // sidebarToggle.textContent = '<'; // sidebarToggle removed
 
-  if (chrome.runtime?.id) {
-    chrome.storage.local.set({ sidebarCollapsed: false });
-  }
+  // // if (chrome.runtime?.id) { // Logic for saving state temporarily disabled
+  // //   chrome.storage.local.set({ sidebarCollapsed: false });
+  // // }
 }
 
 function ewHandleSidebarCollapse() {
-  if (!sidebar || !sidebarToggle) return;
+  // // if (!sidebar || !sidebarToggle) return; // sidebarToggle removed + function body commented out
+  // if (!sidebar) return;
 
-  const sidebarRect = sidebar.getBoundingClientRect();
-  const windowWidth = window.innerWidth;
-  const windowHeight = window.innerHeight; // Get window height for percentage calculation
+  // const sidebarRect = sidebar.getBoundingClientRect();
+  // const windowWidth = window.innerWidth;
+  // const windowHeight = window.innerHeight; // Get window height for percentage calculation
   
-  const sidebarCurrentWidth = sidebarRect.width; // Get current width for targetLeft calculation
+  // const sidebarCurrentWidth = sidebarRect.width; // Get current width for targetLeft calculation
 
-  // Default docked position (target)
-  const targetTopPercent = 20;
-  const targetTopPx = windowHeight * (targetTopPercent / 100);
-  // Target right is 0px, so target left depends on sidebar width
-  const targetLeftPx = windowWidth - sidebarCurrentWidth; 
+  // // Default docked position (target)
+  // const targetTopPercent = 20;
+  // const targetTopPx = windowHeight * (targetTopPercent / 100);
+  // // Target right is 0px, so target left depends on sidebar width
+  // const targetLeftPx = windowWidth - sidebarCurrentWidth;
 
-  // Current position
-  const currentTopPx = sidebarRect.top;
-  const currentLeftPx = sidebarRect.left;
+  // // Current position
+  // const currentTopPx = sidebarRect.top;
+  // const currentLeftPx = sidebarRect.left;
 
-  // Threshold to decide if animation is needed
-  const positionThreshold = 5; // 5px threshold
+  // // Threshold to decide if animation is needed
+  // const positionThreshold = 5; // 5px threshold
 
-  const isAtTargetTop = Math.abs(currentTopPx - targetTopPx) < positionThreshold;
-  // For 'left', compare with targetLeftPx (calculated from right:0)
-  const isAtTargetLeft = Math.abs(currentLeftPx - targetLeftPx) < positionThreshold;
+  // const isAtTargetTop = Math.abs(currentTopPx - targetTopPx) < positionThreshold;
+  // // For 'left', compare with targetLeftPx (calculated from right:0)
+  // const isAtTargetLeft = Math.abs(currentLeftPx - targetLeftPx) < positionThreshold;
 
-  // If the sidebar is significantly away from its target docked position
-  if (!isAtTargetTop || !isAtTargetLeft) {
-    // Ensure sidebar is positioned with left/top for JS animation
-    sidebar.style.right = 'auto'; // Important: allow left to be controlled
-    sidebar.style.left = currentLeftPx + 'px';
-    sidebar.style.top = currentTopPx + 'px';
+  // // If the sidebar is significantly away from its target docked position
+  // if (!isAtTargetTop || !isAtTargetLeft) {
+  //   // Ensure sidebar is positioned with left/top for JS animation
+  //   sidebar.style.right = 'auto'; // Important: allow left to be controlled
+  //   sidebar.style.left = currentLeftPx + 'px';
+  //   sidebar.style.top = currentTopPx + 'px';
 
-    const animationDuration = 200; // ms for the slide to edge animation
-    let startTime = null;
+  //   const animationDuration = 200; // ms for the slide to edge animation
+  //   let startTime = null;
 
-    function animateReturnToEdge(timestamp) {
-      if (!startTime) startTime = timestamp;
-      const progress = timestamp - startTime;
-      const fraction = Math.min(progress / animationDuration, 1);
+  //   function animateReturnToEdge(timestamp) {
+  //     if (!startTime) startTime = timestamp;
+  //     const progress = timestamp - startTime;
+  //     const fraction = Math.min(progress / animationDuration, 1);
 
-      // Linear interpolation (ease-out could be added with a simple easing function)
-      const newLeft = currentLeftPx + (targetLeftPx - currentLeftPx) * fraction;
-      const newTop = currentTopPx + (targetTopPx - currentTopPx) * fraction;
+  //     // Linear interpolation (ease-out could be added with a simple easing function)
+  //     const newLeft = currentLeftPx + (targetLeftPx - currentLeftPx) * fraction;
+  //     const newTop = currentTopPx + (targetTopPx - currentTopPx) * fraction;
 
-      sidebar.style.left = newLeft + 'px';
-      sidebar.style.top = newTop + 'px';
+  //     sidebar.style.left = newLeft + 'px';
+  //     sidebar.style.top = newTop + 'px';
 
-      if (fraction < 1) {
-        requestAnimationFrame(animateReturnToEdge);
-      } else {
-        // Animation complete: Snap to final target position and then collapse
-        sidebar.style.left = 'auto';
-        sidebar.style.right = '0px';
-        sidebar.style.top = targetTopPercent + '%'; // Use percentage for final state
+  //     if (fraction < 1) {
+  //       requestAnimationFrame(animateReturnToEdge);
+  //     } else {
+  //       // Animation complete: Snap to final target position and then collapse
+  //       sidebar.style.left = 'auto';
+  //       sidebar.style.right = '0px';
+  //       sidebar.style.top = targetTopPercent + '%'; // Use percentage for final state
 
-        sidebar.classList.add('ew-sidebar-collapsed');
-        sidebarToggle.textContent = '>';
-        if (chrome.runtime?.id) {
-          chrome.storage.local.set({ sidebarCollapsed: true });
-        }
-      }
-    }
-    requestAnimationFrame(animateReturnToEdge);
+  //       // sidebar.classList.add('ew-sidebar-collapsed'); // Visibility managed by FAB
+  //       // sidebarToggle.textContent = '>'; // sidebarToggle removed
+  //       // if (chrome.runtime?.id) { // Logic for saving state temporarily disabled
+  //       //   chrome.storage.local.set({ sidebarCollapsed: true });
+  //       // }
+  //     }
+  //   }
+  //   requestAnimationFrame(animateReturnToEdge);
 
-  } else {
-    // If already at (or very near) the target docked position, just collapse directly.
-    // Ensure it's perfectly at the default position before transform.
-    sidebar.style.left = 'auto';
-    sidebar.style.right = '0px';
-    sidebar.style.top = targetTopPercent + '%'; // Use percentage
+  // } else {
+  //   // If already at (or very near) the target docked position, just collapse directly.
+  //   // Ensure it's perfectly at the default position before transform.
+  //   sidebar.style.left = 'auto';
+  //   sidebar.style.right = '0px';
+  //   sidebar.style.top = targetTopPercent + '%'; // Use percentage
     
-    sidebar.classList.add('ew-sidebar-collapsed');
-    sidebarToggle.textContent = '>';
-    if (chrome.runtime?.id) {
-      chrome.storage.local.set({ sidebarCollapsed: true });
+  //   // sidebar.classList.add('ew-sidebar-collapsed'); // Visibility managed by FAB
+  //   // sidebarToggle.textContent = '>'; // sidebarToggle removed
+  //   // if (chrome.runtime?.id) { // Logic for saving state temporarily disabled
+  //   //   chrome.storage.local.set({ sidebarCollapsed: true });
+  //   // }
+  // }
+}
+
+// Function to create the FAB
+function createFabButton() {
+    if (document.getElementById('q-fab-button')) return; // Avoid creating duplicates
+
+    fabButton = document.createElement('div');
+    fabButton.id = 'q-fab-button';
+    fabButton.textContent = 'Q';
+    document.body.appendChild(fabButton);
+
+    // Add event listener here:
+    if (!fabButton.ewFabListenerAttached) {
+        fabButton.addEventListener('click', () => {
+            if (sidebar) { // sidebar is the #ew-sidebar element
+                sidebar.classList.toggle('open');
+                if (sidebar.classList.contains('open')) {
+                    fabButton.textContent = '✕';
+                } else {
+                    fabButton.textContent = 'Q';
+                }
+            }
+        });
+        fabButton.ewFabListenerAttached = true; // Mark listener as attached
     }
-  }
 }
 
 if (isExtensionEnabled) {
