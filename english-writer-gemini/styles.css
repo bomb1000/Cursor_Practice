@@ -49,36 +49,58 @@
 
 /* 右側邊欄 */
 #ew-sidebar {
-  position: fixed;
-  top: 20%; 
-  right: 0;
-  width: 300px; /* Slightly wider for a more modern feel, adjust as needed */
-  height: calc(100vh - 40px); /* Explicit height matching max-height */
-  min-height: 150px; /* Increased min-height */
-  max-height: calc(100vh - 40px); /* Example: leave some space from top/bottom */
-  background-color: var(--ew-lavender-bg); /* Main sidebar background */
-  color: var(--ew-lavender-text-primary); /* Default text color for the sidebar */
-  border: 1px solid var(--ew-lavender-accent-dark); /* Border for the sidebar */
-  border-right: none; /* Usually side panels don't have a border on the edge they attach to */
-  border-radius: 8px 0 0 8px; /* Rounded corners on the left side */
-  box-shadow: 0 1px 2px 0 rgba(60,64,67,.3), 0 2px 6px 2px rgba(60,64,67,.15); /* Google-like shadow */
-  z-index: 2147483646; /* Slightly lower than max */
-  padding: 12px; /* Main padding */
-  padding-left: 22px; /* Space for the toggle, adjusted */
+  position: fixed; /* Changed */
+  top: 0; /* Changed */
+  right: 0; /* Changed */
+  width: 350px; /* Changed */
+  height: 100vh; /* Changed */
+  /* min-height: 150px; */ /* Keep if needed, but height is now 100vh */
+  /* max-height: calc(100vh - 40px); */ /* Keep if needed, but height is now 100vh */
+  background-color: var(--ew-lavender-bg);
+  color: var(--ew-lavender-text-primary);
+  border: 1px solid var(--ew-lavender-accent-dark);
+  /* border-right: none; */ /* REMOVED */
+  border-radius: 8px; /* CHANGED - Applied to all corners */
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2); /* New shadow */
+  z-index: 2147483645; /* Adjusted z-index */
+  padding: 12px; /* Main padding, padding-left for toggle removed */
+  /* padding-left: 22px; */ /* REMOVED */
   box-sizing: border-box;
-  transition: transform 0.3s ease-in-out;
-  overflow: hidden; /* Ensures no scrollbars on the main container due to flex item miscalculations */
-  font-family: 'Roboto', 'Arial', sans-serif; /* Google Font */
-  font-size: 14px; /* Base font size */
-  line-height: 1.5; /* Improved line height */
+  overflow: hidden;
+  font-family: 'Roboto', 'Arial', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
   display: flex;
   flex-direction: column;
+
+  /* === Animation specific - Initial State === */
+  transform-origin: top right;
+  transform: translateX(100%) scale(0.1);
+  opacity: 0;
+  visibility: hidden;
+  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
+              opacity 0.3s ease-out,
+              visibility 0s 0.4s; /* visibility delay matches transform */
+  will-change: transform, opacity;
 }
 
+/* Styles for the open state of the sidebar */
+#ew-sidebar.open {
+    transform: translateX(0) scale(1); /* 打開狀態：正常大小和位置 */
+    opacity: 1;
+    visibility: visible;
+    transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
+                opacity 0.3s ease-out 0.1s, /* opacity 稍慢一點開始，效果更好 */
+                visibility 0s 0s;
+}
+
+/*
 #ew-sidebar.ew-sidebar-collapsed {
-  transform: translateX(calc(100% - 22px)); /* Adjust based on new padding-left */
+  transform: translateX(calc(100% - 22px));
 }
+*/
 
+/*
 #ew-sidebar-toggle {
   position: absolute;
   left: 0px;
@@ -104,14 +126,13 @@
   background-color: var(--ew-themed-button-hover-bg);
   color: var(--ew-themed-button-hover-text);
   border-color: var(--ew-themed-button-hover-border);
-  border-right: none; /* Ensure consistency */
+  border-right: none;
 }
 
-/* Styles for the toggle when the sidebar is collapsed */
 #ew-sidebar.ew-sidebar-collapsed #ew-sidebar-toggle {
   background: linear-gradient(135deg, var(--ew-lavender-gradient-start) 0%, var(--ew-lavender-gradient-end) 100%);
-  border-color: var(--ew-lavender-accent-dark); /* Using the stronger accent for border */
-  color: var(--ew-themed-button-text); /* Consistent with other button text */
+  border-color: var(--ew-lavender-accent-dark);
+  color: var(--ew-themed-button-text);
   border-right: none; 
 }
 
@@ -119,8 +140,8 @@
   background: linear-gradient(135deg, var(--ew-lavender-gradient-hover-start) 0%, var(--ew-lavender-gradient-hover-end) 100%);
   border-color: var(--ew-lavender-accent-dark); 
   border-right: none;
-  /* color: var(--ew-themed-button-text); */ /* Text color likely remains the same */
 }
+*/
 
 #ew-sidebar-fixed-controls {
   display: flex; /* Use flex to arrange its own children */
@@ -291,4 +312,33 @@
 body.ew-sidebar-present {
   /* This class would be added to body by JS when sidebar is active, if needed for scrollbar compensation */
   /* Example: padding-right: [width of scrollbar]; */
+}
+
+/* FAB Button Styles */
+#q-fab-button {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 50px; /* 球的大小 */
+    height: 50px;
+    background-color: #007bff; /* 範例顏色 */
+    color: white;
+    border-radius: 50%; /* 圓形 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px; /* 圖標或文字大小 */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    cursor: pointer;
+    z-index: 10000; /* 確保在最上層 */
+    transition: transform 0.2s ease-out, background-color 0.2s ease; /* 按鈕本身的點擊/懸浮效果 */
+}
+
+#q-fab-button:hover {
+    transform: scale(1.1);
+    background-color: #0056b3; /* 懸浮時變色 */
+}
+
+#q-fab-button:active {
+    transform: scale(0.95);
 }
