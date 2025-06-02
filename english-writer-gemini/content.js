@@ -24,16 +24,46 @@ const EW_SIDEBAR_MAX_WIDTH = 800;
 const EW_SIDEBAR_MIN_HEIGHT = 150; 
 let EW_SIDEBAR_MAX_HEIGHT = 600; 
 
-// Initialize on load
+// Refactored Initialization Logic
+let domReady = (document.readyState === "complete" || document.readyState === "interactive");
+let settingsLoaded = false; // Flag to track if settings are loaded
+
+function attemptInitialize() {
+    if (domReady && settingsLoaded && isExtensionEnabled) {
+        console.log("EW_CONTENT: DOM ready, settings loaded, and extension enabled. Initializing UI.");
+        initializeUI();
+    } else if (domReady && settingsLoaded && !isExtensionEnabled) {
+        console.log("EW_CONTENT: DOM ready, settings loaded, but extension is disabled. Not initializing UI.");
+        // removeUI(); // Be cautious if removeUI itself depends on initialized elements
+    }
+}
+
 if (chrome.runtime?.id) {
   chrome.storage.sync.get(['isEnabled', 'writingStyle'], (result) => {
+    console.log("EW_CONTENT: Storage settings received.", result);
     isExtensionEnabled = typeof result.isEnabled === 'undefined' ? true : result.isEnabled;
-    if (isExtensionEnabled) {
-      initializeUI();
-    }
+    // writingStyle is loaded here but used elsewhere (e.g. triggerTranslation)
+    settingsLoaded = true;
+    attemptInitialize(); // Attempt to initialize after settings are loaded
   });
 } else {
-  console.log("EW: Context invalidated during initial setup.");
+  console.log("EW_CONTENT: Context invalidated, cannot load settings. Assuming disabled.");
+  isExtensionEnabled = false;
+  settingsLoaded = true; // Mark as loaded to allow domReady check to proceed if it happens
+  attemptInitialize();
+}
+
+// DOMContentLoaded listener
+if (!domReady) {
+    document.addEventListener("DOMContentLoaded", () => {
+        console.log("EW_CONTENT: DOMContentLoaded event fired.");
+        domReady = true;
+        attemptInitialize(); // Attempt to initialize once DOM is ready
+    });
+} else {
+    // If DOM is already ready when this part of script runs,
+    // settings might not be loaded yet, attemptInitialize will handle that.
+    attemptInitialize();
 }
 
 // Listen for messages from popup or background
@@ -62,9 +92,10 @@ try {
     } else if (request.type === 'TRANSLATION_STARTED') {
       console.log("EW: content.js received TRANSLATION_STARTED message.");
       if (window.self === window.top) { // Explicit check for top frame
-        if (!sidebar || !sidebarContent || !sidebarToggle) {
-            console.log("EW: Sidebar not fully initialized (top frame), creating it now for TRANSLATION_STARTED.");
-            createSidebar(); // createSidebar itself is guarded
+        // MODIFIED CONDITION:
+        if (!sidebar || !sidebarContent) { // sidebarToggle check removed
+            console.log("EW: Sidebar panel not fully initialized (top frame), creating it now for TRANSLATION_STARTED.");
+            createSidebar();
         }
         
         if (sidebarContent) {
@@ -76,17 +107,13 @@ try {
             copyButton.style.display = 'none';
         }
 
-        if (sidebar && sidebarToggle) { 
-            sidebar.style.display = 'block'; 
-            if (sidebar.classList.contains('ew-sidebar-collapsed')) {
-                // sidebar.classList.remove('ew-sidebar-collapsed'); // This is handled by ewHandleSidebarExpand
-                // sidebarToggle.textContent = '<';
-                ewHandleSidebarExpand(); // Use the main function to ensure consistent behavior
-                if (chrome.runtime?.id) {
-                    chrome.storage.local.set({ sidebarCollapsed: false });
-                }
-            }
+        // Ensure the panel is open if a translation is started
+        if (sidebar && fabButton && !sidebar.classList.contains('open')) {
+           console.log("EW: Translation started, ensuring panel is open.");
+           sidebar.classList.add('open');
+           fabButton.textContent = '✕';
         }
+
       } else {
         console.log("EW: TRANSLATION_STARTED received in iframe, not creating or manipulating sidebar.");
       }
@@ -95,9 +122,10 @@ try {
     } else if (request.type === 'DISPLAY_TRANSLATION') {
       console.log("EW: content.js received DISPLAY_TRANSLATION message.");
       if (window.self === window.top) { // Explicit check for top frame
-        if (!sidebar || !sidebarContent || !sidebarToggle) { 
-          console.log("EW: Sidebar not fully initialized (top frame), creating it now for DISPLAY_TRANSLATION.");
-          createSidebar(); // createSidebar itself is guarded
+        // MODIFIED CONDITION:
+        if (!sidebar || !sidebarContent) { // sidebarToggle check removed
+          console.log("EW: Sidebar panel not fully initialized (top frame), creating it now for DISPLAY_TRANSLATION.");
+          createSidebar();
         }
 
         const copyButton = document.getElementById('ew-copy-button');
@@ -118,17 +146,13 @@ try {
           if (copyButton) copyButton.style.display = 'none';
         }
 
-        if (sidebar && sidebarToggle) {
-          sidebar.style.display = 'block'; 
-          if (sidebar.classList.contains('ew-sidebar-collapsed')) {
-            // sidebar.classList.remove('ew-sidebar-collapsed'); // Handled by ewHandleSidebarExpand
-            // sidebarToggle.textContent = '<';
-            ewHandleSidebarExpand(); // Use the main function
-            if (chrome.runtime?.id) {
-              chrome.storage.local.set({ sidebarCollapsed: false });
-            }
-          }
+        // Ensure the panel is open if a translation is displayed
+        if (sidebar && fabButton && !sidebar.classList.contains('open')) {
+           console.log("EW: Translation displayed, ensuring panel is open.");
+           sidebar.classList.add('open');
+           fabButton.textContent = '✕';
         }
+
       } else {
         console.log("EW: DISPLAY_TRANSLATION received in iframe, not creating or manipulating sidebar.");
       }
@@ -687,10 +711,11 @@ function createFabButton() {
     }
 }
 
-if (isExtensionEnabled) {
-  if (document.readyState === "complete" || document.readyState === "interactive") {
-    initializeUI();
-  } else {
-    document.addEventListener("DOMContentLoaded", initializeUI);
-  }
-}
+// Old initialization block removed as per refactoring.
+// if (isExtensionEnabled) {
+//   if (document.readyState === "complete" || document.readyState === "interactive") {
+//     initializeUI();
+//   } else {
+//     document.addEventListener("DOMContentLoaded", initializeUI);
+//   }
+// }
