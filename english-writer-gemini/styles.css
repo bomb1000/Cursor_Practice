@@ -66,7 +66,7 @@
   padding: 12px; /* Main padding, padding-left for toggle removed */
   /* padding-left: 22px; */ /* REMOVED */
   box-sizing: border-box;
-  overflow: hidden;
+  /* overflow: hidden; */ /* REMOVED */
   font-family: 'Roboto', 'Arial', sans-serif;
   font-size: 14px;
   line-height: 1.5;
@@ -146,10 +146,10 @@
 #ew-sidebar-fixed-controls {
   display: flex; /* Use flex to arrange its own children */
   flex-direction: column; /* Stack children vertically */
-  flex-grow: 0; /* Do not allow it to grow beyond its basis */
+  /* flex-grow: 0; */ /* REMOVED */
   flex-shrink: 0; /* Prevents this container from shrinking */
-  flex-basis: 30%; /* Allocate 30% of the parent's height */
-  overflow-y: auto; /* Allow fixed controls to scroll if its own content is too tall for the 30% */
+  /* flex-basis: 30%; */ /* REMOVED */
+  /* overflow-y: auto; */ /* REMOVED */
   padding-bottom: 5px; /* Proactive padding for its own potential scrollbar */
   /* max-height: 35vh; /* Removed as flex-basis should now control this */
 }
