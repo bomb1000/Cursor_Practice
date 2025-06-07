@@ -146,10 +146,10 @@
 #ew-sidebar-fixed-controls {
   display: flex; /* Use flex to arrange its own children */
   flex-direction: column; /* Stack children vertically */
-  height: 25%;
-  overflow-y: auto;
+  /* height: 25%; */ /* REMOVED */
+  /* overflow-y: auto; */ /* REMOVED */
   flex-shrink: 0; /* Prevents this container from shrinking */
-  padding-bottom: 5px; /* Keep or adjust if necessary */
+  padding-bottom: 2px; /* Reduced padding */
   font-family: "Poppins", "Nunito", "Inter", system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 }
 
@@ -160,8 +160,8 @@
   font-size: 16px;
   font-weight: 600;
   color: var(--ew-header-text-color);
-  margin: 0 0 8px 0; /* Reduced bottom margin */
-  padding: 0 0 6px 0; /* Reduced bottom padding */
+  margin: 0 0 6px 0; /* Further Reduced bottom margin */
+  padding: 0 0 4px 0; /* Further Reduced bottom padding */
   border-bottom: 1px solid var(--ew-lavender-accent);
 }
 
@@ -169,8 +169,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px 0; /* Reduced padding */
-  margin-bottom: 8px; /* Space before copy button */
+  padding: 2px 0; /* Further Reduced padding */
+  margin-bottom: 6px; /* Further Space before copy button */
   border-bottom: 1px solid var(--ew-lavender-accent);
   flex-shrink: 0;
 }
@@ -202,7 +202,7 @@
 }
 
 #ew-sidebar-content {
-  height: 75%;
+  /* height: 75%; */ /* REMOVED - let flex-grow handle it */
   flex-grow: 1; /* Allows this element to take up all remaining space */
   flex-shrink: 1; /* Allow it to shrink if necessary (default) */
   /* flex-basis: 0; */  /* Start with no initial size, then grow to fill - height % makes this less critical for height */
