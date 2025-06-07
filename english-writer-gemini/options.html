@@ -27,11 +27,21 @@
   <div class="form-group" id="geminiKeyGroup">
     <label for="apiKey">Gemini API 金鑰:</label>
     <input type="text" id="apiKey" placeholder="在此輸入你的 Gemini API Key">
+    <div>
+      <p>Current Gemini Model: <span id="currentGeminiModel">Loading...</span></p>
+      <label for="geminiModelSelect">Select Gemini Model:</label>
+      <select id="geminiModelSelect" name="geminiModelSelect"></select>
+    </div>
   </div>
 
   <div class="form-group" id="openaiKeyGroup" style="display:none;">
     <label for="openaiApiKey">OpenAI API 金鑰:</label>
     <input type="text" id="openaiApiKey" placeholder="在此輸入你的 OpenAI API Key">
+    <div>
+      <p>Current OpenAI Model: <span id="currentOpenAIModel">Loading...</span></p>
+      <label for="openaiModelSelect">Select OpenAI Model:</label>
+      <select id="openaiModelSelect" name="openaiModelSelect"></select>
+    </div>
   </div>
 
   <div class="form-group">

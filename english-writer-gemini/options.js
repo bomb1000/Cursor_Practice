@@ -1,6 +1,15 @@
 document.addEventListener('DOMContentLoaded', () => {
+  const GEMINI_MODELS = ['gemini-1.5-pro-latest', 'gemini-1.5-flash-latest', 'gemini-pro'];
+  const OPENAI_MODELS = ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo-preview', 'gpt-4o']; // Added gpt-4o as a common new one
+  const DEFAULT_GEMINI_MODEL = 'gemini-1.5-pro-latest';
+  const DEFAULT_OPENAI_MODEL = 'gpt-3.5-turbo';
+
   const apiKeyInput = document.getElementById('apiKey');
   const writingStyleSelect = document.getElementById('writingStyle');
+  const currentGeminiModelSpan = document.getElementById('currentGeminiModel');
+  const geminiModelSelect = document.getElementById('geminiModelSelect');
+  const currentOpenAIModelSpan = document.getElementById('currentOpenAIModel');
+  const openaiModelSelect = document.getElementById('openaiModelSelect');
   const saveButton = document.getElementById('saveOptions');
   const statusDiv = document.getElementById('status');
   const apiProviderSelect = document.getElementById('apiProvider');
@@ -8,8 +17,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const openaiKeyGroup = document.getElementById('openaiKeyGroup');
   const openaiApiKeyInput = document.getElementById('openaiApiKey');
 
+  function populateSelect(selectElement, models) {
+    models.forEach(model => {
+      const option = document.createElement('option');
+      option.value = model;
+      option.textContent = model;
+      selectElement.appendChild(option);
+    });
+  }
+  populateSelect(geminiModelSelect, GEMINI_MODELS);
+  populateSelect(openaiModelSelect, OPENAI_MODELS);
+
   // 載入儲存的設定
-  chrome.storage.sync.get(['apiProvider', 'geminiApiKey', 'openaiApiKey', 'writingStyle'], (result) => {
+  chrome.storage.sync.get(['apiProvider', 'geminiApiKey', 'openaiApiKey', 'writingStyle', 'geminiUserSelectedModel', 'openaiUserSelectedModel'], (result) => {
     if (result.apiProvider) {
       apiProviderSelect.value = result.apiProvider;
       geminiKeyGroup.style.display = result.apiProvider === 'gemini' ? 'block' : 'none';
@@ -24,6 +44,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (result.writingStyle) {
       writingStyleSelect.value = result.writingStyle;
     }
+    // After other settings are loaded...
+    const savedGeminiModel = result.geminiUserSelectedModel || DEFAULT_GEMINI_MODEL;
+    currentGeminiModelSpan.textContent = savedGeminiModel;
+    geminiModelSelect.value = savedGeminiModel;
+
+    const savedOpenAIModel = result.openaiUserSelectedModel || DEFAULT_OPENAI_MODEL;
+    currentOpenAIModelSpan.textContent = savedOpenAIModel;
+    openaiModelSelect.value = savedOpenAIModel;
   });
 
   apiProviderSelect.addEventListener('change', () => {
@@ -54,9 +82,13 @@ document.addEventListener('DOMContentLoaded', () => {
       apiProvider: provider,
       geminiApiKey: apiKey,
       openaiApiKey: openaiKey,
-      writingStyle: style
+      writingStyle: style,
+      geminiUserSelectedModel: geminiModelSelect.value,
+      openaiUserSelectedModel: openaiModelSelect.value,
     }, () => {
       statusDiv.textContent = '設定已儲存！';
+      currentGeminiModelSpan.textContent = geminiModelSelect.value;
+      currentOpenAIModelSpan.textContent = openaiModelSelect.value;
       statusDiv.style.color = 'green';
       setTimeout(() => { statusDiv.textContent = ''; }, 3000);
     });

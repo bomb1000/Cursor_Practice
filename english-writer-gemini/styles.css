@@ -53,7 +53,7 @@
   top: 0; /* Changed */
   right: 0; /* Changed */
   width: 350px; /* Changed */
-  height: 100vh; /* Changed */
+  height: 50vh; /* Changed */
   /* min-height: 150px; */ /* Keep if needed, but height is now 100vh */
   /* max-height: calc(100vh - 40px); */ /* Keep if needed, but height is now 100vh */
   background-color: var(--ew-lavender-bg);
@@ -146,12 +146,10 @@
 #ew-sidebar-fixed-controls {
   display: flex; /* Use flex to arrange its own children */
   flex-direction: column; /* Stack children vertically */
-  /* flex-grow: 0; */ /* REMOVED */
+  height: 25%;
+  overflow-y: auto;
   flex-shrink: 0; /* Prevents this container from shrinking */
-  /* flex-basis: 30%; */ /* REMOVED */
-  /* overflow-y: auto; */ /* REMOVED */
   padding-bottom: 5px; /* Proactive padding for its own potential scrollbar */
-  /* max-height: 35vh; /* Removed as flex-basis should now control this */
 }
 
 #ew-sidebar-header {
@@ -187,9 +185,10 @@
 }
 
 #ew-sidebar-content {
+  height: 75%;
   flex-grow: 1; /* Allows this element to take up all remaining space */
   flex-shrink: 1; /* Allow it to shrink if necessary (default) */
-  flex-basis: 0;  /* Start with no initial size, then grow to fill */
+  /* flex-basis: 0; */  /* Start with no initial size, then grow to fill - height % makes this less critical for height */
   overflow-y: auto; 
   min-height: 0; /* Crucial for allowing it to shrink and enable scrolling */
   padding: 8px; 
@@ -317,8 +316,6 @@ body.ew-sidebar-present {
 /* FAB Button Styles */
 #q-fab-button {
     position: fixed;
-    top: 20px;
-    right: 20px;
     width: 50px; /* 球的大小 */
     height: 50px;
     background-color: #007bff; /* 範例顏色 */
