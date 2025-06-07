@@ -84,8 +84,8 @@ async function handleTranslationRequest(text, style) {
     if (!settings.geminiApiKey) {
       throw new Error('Gemini API Key not configured. Please set it in the extension options.');
     }
-    const model = 'models/gemini-1.5-pro';
-    const API_URL = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${settings.geminiApiKey}`;
+    const modelName = 'gemini-1.5-pro-latest'; // Renamed 'model' to 'modelName' for clarity and removed 'models/' prefix
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${settings.geminiApiKey}`; // Changed to v1beta and used modelName directly
     try {
       const response = await fetch(API_URL, {
         method: 'POST',
