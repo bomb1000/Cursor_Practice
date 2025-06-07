@@ -176,7 +176,7 @@ async function getSelectedTextAndTranslate(tab, style = null) {
 
   // Send TRANSLATION_STARTED message
   console.log("EW_BACKGROUND: Sending TRANSLATION_STARTED to tab:", tab.id);
-  chrome.tabs.sendMessage(tab.id, { type: "TRANSLATION_STARTED" });
+  chrome.tabs.sendMessage(tab.id, { type: "TRANSLATION_STARTED" }, { frameId: 0 });
 
   console.log("EW_BACKGROUND: Attempting to execute script to get selection in tab:", tab.id);
   chrome.scripting.executeScript({
@@ -185,14 +185,14 @@ async function getSelectedTextAndTranslate(tab, style = null) {
   }, async (injectionResults) => { // Made this callback async to use await for handleTranslationRequest
     if (chrome.runtime.lastError) {
       console.error("EW_BACKGROUND: Error executing script to get selection:", chrome.runtime.lastError.message);
-      chrome.tabs.sendMessage(tab.id, { type: "DISPLAY_TRANSLATION", data: { error: "Error getting selected text: " + chrome.runtime.lastError.message } });
+      chrome.tabs.sendMessage(tab.id, { type: "DISPLAY_TRANSLATION", data: { error: "Error getting selected text: " + chrome.runtime.lastError.message } }, { frameId: 0 });
       return;
     }
     console.log("EW_BACKGROUND: Injection results received:", JSON.parse(JSON.stringify(injectionResults)));
 
     if (!injectionResults || injectionResults.length === 0 || !injectionResults[0].result) {
       console.log("EW_BACKGROUND: No text selected or could not retrieve selection.");
-      chrome.tabs.sendMessage(tab.id, { type: "DISPLAY_TRANSLATION", data: { error: "No text was selected to translate." } });
+      chrome.tabs.sendMessage(tab.id, { type: "DISPLAY_TRANSLATION", data: { error: "No text was selected to translate." } }, { frameId: 0 });
       return;
     }
     
@@ -203,14 +203,14 @@ async function getSelectedTextAndTranslate(tab, style = null) {
       try {
         const translationResult = await handleTranslationRequest(selectedText, style);
         console.log("EW_BACKGROUND: Translation successful, sending to content script. Result:", JSON.parse(JSON.stringify(translationResult)));
-        chrome.tabs.sendMessage(tab.id, { type: "DISPLAY_TRANSLATION", data: translationResult });
+        chrome.tabs.sendMessage(tab.id, { type: "DISPLAY_TRANSLATION", data: translationResult }, { frameId: 0 });
       } catch (error) {
         console.error("EW_BACKGROUND: Translation failed, sending error to content script. Error:", error.message);
-        chrome.tabs.sendMessage(tab.id, { type: "DISPLAY_TRANSLATION", data: { error: error.message || "An unknown error occurred during translation." } });
+        chrome.tabs.sendMessage(tab.id, { type: "DISPLAY_TRANSLATION", data: { error: error.message || "An unknown error occurred during translation." } }, { frameId: 0 });
       }
     } else {
       console.log("EW_BACKGROUND: Selected text is empty after trim.");
-      chrome.tabs.sendMessage(tab.id, { type: "DISPLAY_TRANSLATION", data: { error: "Selected text is empty." } });
+      chrome.tabs.sendMessage(tab.id, { type: "DISPLAY_TRANSLATION", data: { error: "Selected text is empty." } }, { frameId: 0 });
     }
   });
 }
@@ -227,7 +227,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
             console.error("Error setting isEnabled:", chrome.runtime.lastError);
             return;
           }
-          chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_ENABLED', enabled: newState }, (response) => {
+          chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_ENABLED', enabled: newState }, { frameId: 0 }, (response) => {
             if (chrome.runtime.lastError) {
               console.warn("EW: Could not send TOGGLE_ENABLED to tab " + tab.id + ". It might be a system page or closed.", chrome.runtime.lastError.message);
             }
