@@ -590,12 +590,18 @@ function createSidebar() {
   fontIncreaseButton.textContent = 'A+';
   fontControlsContainer.appendChild(fontDecreaseButton);
   fontControlsContainer.appendChild(fontIncreaseButton);
-  fixedControls.appendChild(fontControlsContainer); // Append to fixedControls
+  // fixedControls.appendChild(fontControlsContainer); // No longer direct child of fixedControls
 
   const shortcutDisplay = document.createElement('div');
   shortcutDisplay.id = 'ew-shortcut-display';
   shortcutDisplay.textContent = 'Shortcut: ...'; 
-  fixedControls.appendChild(shortcutDisplay); // Append to fixedControls
+  // fixedControls.appendChild(shortcutDisplay); // No longer direct child of fixedControls
+
+  const fontShortcutWrapper = document.createElement('div');
+  fontShortcutWrapper.id = 'ew-font-shortcut-wrapper';
+  fontShortcutWrapper.appendChild(fontControlsContainer);
+  fontShortcutWrapper.appendChild(shortcutDisplay);
+  fixedControls.appendChild(fontShortcutWrapper);
 
   const copyButton = document.createElement('button');
   copyButton.id = 'ew-copy-button';
