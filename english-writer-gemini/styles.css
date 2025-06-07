@@ -149,39 +149,56 @@
   height: 25%;
   overflow-y: auto;
   flex-shrink: 0; /* Prevents this container from shrinking */
-  padding-bottom: 5px; /* Proactive padding for its own potential scrollbar */
+  padding-bottom: 5px; /* Keep or adjust if necessary */
+  font-family: "Poppins", "Nunito", "Inter", system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 }
 
 #ew-sidebar-header {
   cursor: move;
   user-select: none;
   flex-shrink: 0;
-  font-size: 1em; /* Adjust if needed, relative to sidebar's base font */
-  font-weight: 600; /* Slightly bolder */
-  color: var(--ew-header-text-color); /* Specific header text color */
-  margin: 0 0 12px 0; /* Increased margin, manage all margin here */
-  padding: 0 0 8px 0; /* Add padding for separation, manage all padding here */
-  border-bottom: 1px solid var(--ew-lavender-accent); /* Separator line */
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ew-header-text-color);
+  margin: 0 0 8px 0; /* Reduced bottom margin */
+  padding: 0 0 6px 0; /* Reduced bottom padding */
+  border-bottom: 1px solid var(--ew-lavender-accent);
+}
+
+#ew-font-shortcut-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0; /* Reduced padding */
+  margin-bottom: 8px; /* Space before copy button */
+  border-bottom: 1px solid var(--ew-lavender-accent);
+  flex-shrink: 0;
 }
 
 #ew-font-controls {
   display: flex;
-  justify-content: space-between; 
+  /* justify-content: space-between; /* Original, keep if A- A+ need space, or remove if they are close */
   align-items: center;
-  padding: 8px 0; 
-  margin-bottom: 10px; 
-  border-bottom: 1px solid var(--ew-lavender-accent); /* Updated border color */
+  /* Remove padding, margin, border-bottom as these are handled by the wrapper or unnecessary */
+  padding: 0;
+  margin-bottom: 0;
+  border-bottom: none;
   flex-shrink: 0;
+}
+/* Add some space between A- and A+ buttons if needed */
+#ew-font-controls button {
+    margin: 0 2px; /* Small margin between A- and A+ */
 }
 
 #ew-shortcut-display {
-  font-size: 11px; /* Set a fixed pixel size */
+  font-size: 10px; /* Slightly smaller */
   color: var(--ew-lavender-text-secondary);
-  margin-bottom: 10px; 
-  padding-bottom: 8px; 
-  border-bottom: 1px solid var(--ew-lavender-accent); /* Consistent separator */
-  text-align: center; 
-  flex-shrink: 0; 
+  /* Remove padding, margin, border-bottom as these are handled by the wrapper or unnecessary */
+  padding: 0;
+  margin-bottom: 0;
+  border-bottom: none;
+  text-align: right; /* Align to the right within the flex wrapper */
+  flex-shrink: 0;
 }
 
 #ew-sidebar-content {
@@ -216,7 +233,7 @@
   display: block; 
   width: 100%;  
   box-sizing: border-box; 
-  margin-top: 8px; 
+  margin-top: 4px; /* Reduced top margin */
   flex-shrink: 0; 
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
