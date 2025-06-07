@@ -1,4 +1,5 @@
 console.log("EW_CONTENT: Script started injecting/running. Timestamp:", Date.now());
+try {
 // Global variables
 let isFabDragging = false;
 let fabDragStartX = 0, fabDragStartY = 0;
@@ -76,6 +77,7 @@ if (!domReady) {
 // Listen for messages from popup or background
 try {
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    console.log(`EW_CONTENT: Message received - Type: ${request?.type}, From: ${sender?.id}, Tab: ${sender?.tab?.id}`);
     if (request.type === 'TOGGLE_ENABLED') {
       isExtensionEnabled = request.enabled;
       if (isExtensionEnabled) {
@@ -164,6 +166,10 @@ try {
         console.log("EW: DISPLAY_TRANSLATION received in iframe, not creating or manipulating sidebar.");
       }
       sendResponse({ status: "Translation displayed" });
+    } else if (request.type === 'PING_CONTENT_SCRIPT') {
+      console.log("EW_CONTENT: Received PING_CONTENT_SCRIPT, sending PONG.");
+      sendResponse({ type: "PONG_FROM_CONTENT" });
+      return true;
     }
     return true; 
   });
@@ -838,3 +844,6 @@ function createFabButton() {
 //     document.addEventListener("DOMContentLoaded", initializeUI);
 //   }
 // }
+} catch (globalError) {
+  console.error("EW_CONTENT: !!! Global unhandled error in content script !!!", globalError.message, globalError.stack, globalError);
+}

@@ -30,6 +30,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
+function sendMessagePromise(tabId, item, options) {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.sendMessage(tabId, item, options, response => {
+      if (chrome.runtime.lastError) {
+        reject(chrome.runtime.lastError);
+      } else {
+        resolve(response);
+      }
+    });
+  });
+}
+
 async function handleTranslationRequest(text, style) {
   if (!text.trim()) {
     return { translatedText: '' };
@@ -174,8 +186,24 @@ async function getSelectedTextAndTranslate(tab, style = null) {
     return;
   }
 
-  // Send TRANSLATION_STARTED message
+  try {
+    console.log(`EW_BACKGROUND: Pinging content script in tab ${tab.id}`);
+    const pong = await sendMessagePromise(tab.id, { type: "PING_CONTENT_SCRIPT" }, { frameId: 0 });
+    if (pong?.type !== "PONG_FROM_CONTENT") {
+      console.error(`EW_BACKGROUND: Content script in tab ${tab.id} did not respond correctly to ping.`);
+      chrome.tabs.sendMessage(tab.id, { type: "DISPLAY_TRANSLATION", data: { error: "Error: Content script not responsive. Please try refreshing the page." } }, { frameId: 0 });
+      return;
+    }
+    console.log(`EW_BACKGROUND: Content script in tab ${tab.id} responded to ping.`);
+  } catch (pingError) {
+    console.error(`EW_BACKGROUND: Error pinging content script in tab ${tab.id}:`, pingError.message);
+    chrome.tabs.sendMessage(tab.id, { type: "DISPLAY_TRANSLATION", data: { error: "Error: Content script unreachable. Please try refreshing the page." } }, { frameId: 0 });
+    return;
+  }
+
+  // Now, proceed with TRANSLATION_STARTED (already specifying frameId: 0 from previous fix)
   console.log("EW_BACKGROUND: Sending TRANSLATION_STARTED to tab:", tab.id);
+  // Note: This sendMessage doesn't need a response, so not using sendMessagePromise here.
   chrome.tabs.sendMessage(tab.id, { type: "TRANSLATION_STARTED" }, { frameId: 0 });
 
   console.log("EW_BACKGROUND: Attempting to execute script to get selection in tab:", tab.id);
