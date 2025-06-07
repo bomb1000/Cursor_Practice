@@ -1,5 +1,11 @@
 console.log("EW_CONTENT: Script started injecting/running. Timestamp:", Date.now());
 // Global variables
+let isFabDragging = false;
+let fabDragStartX = 0, fabDragStartY = 0;
+let fabInitialX = 0, fabInitialY = 0;
+let fabWasDragged = false; // To distinguish drag from click
+const EW_FAB_STORAGE_KEY = 'ewFabPosition'; // Unique key
+
 let sidebar = null;
 let sidebarContent = null;
 let sidebarToggle = null;
@@ -164,6 +170,60 @@ try {
   console.log("EW_CONTENT: Message listener attached successfully.");
 } catch (e) {
   console.error("EW_CONTENT: Error attaching message listener:", e);
+}
+
+function onFabMouseDown(event) {
+  if (event.button !== 0 || !fabButton) return;
+  isFabDragging = true;
+  fabWasDragged = false; // Reset drag flag
+  fabDragStartX = event.clientX;
+  fabDragStartY = event.clientY;
+  const fabRect = fabButton.getBoundingClientRect();
+  fabInitialX = fabRect.left;
+  fabInitialY = fabRect.top;
+  fabButton.style.cursor = 'move';
+  document.documentElement.style.userSelect = 'none';
+  document.addEventListener('mousemove', onFabMouseMove, { passive: false });
+  document.addEventListener('mouseup', onFabMouseUp, { once: true });
+  event.preventDefault();
+}
+
+function onFabMouseMove(event) {
+  if (!isFabDragging || !fabButton) return;
+  event.preventDefault();
+  let deltaX = event.clientX - fabDragStartX;
+  let deltaY = event.clientY - fabDragStartY;
+
+  // If moved more than a few pixels, consider it a drag
+  if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) {
+      fabWasDragged = true;
+  }
+
+  let newLeft = fabInitialX + deltaX;
+  let newTop = fabInitialY + deltaY;
+  newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - fabButton.offsetWidth));
+  newTop = Math.max(0, Math.min(newTop, window.innerHeight - fabButton.offsetHeight));
+  fabButton.style.left = newLeft + 'px';
+  fabButton.style.top = newTop + 'px';
+  fabButton.style.right = 'auto';
+  fabButton.style.bottom = 'auto';
+}
+
+function onFabMouseUp(event) {
+  if (!isFabDragging || !fabButton) return;
+  isFabDragging = false;
+  fabButton.style.cursor = 'pointer';
+  document.documentElement.style.userSelect = 'auto';
+  document.removeEventListener('mousemove', onFabMouseMove);
+  // event.stopPropagation(); // May not be needed with fabWasDragged flag
+
+  const finalRect = fabButton.getBoundingClientRect();
+  if (chrome.runtime?.id) {
+    chrome.storage.local.set({ [EW_FAB_STORAGE_KEY]: { left: finalRect.left, top: finalRect.top } });
+  }
+  // Reset fabWasDragged slightly later to allow click handler to process
+  // This is a common pattern, but ensure the click handler logic is robust.
+  // If fabWasDragged is checked in click, it should work.
 }
 
 // Initialize UI elements and event listeners
@@ -717,7 +777,11 @@ function createFabButton() {
     // Add event listener here:
     if (!fabButton.ewFabListenerAttached) {
         fabButton.addEventListener('click', () => {
-            if (sidebar) { // sidebar is the #ew-sidebar element
+            if (fabWasDragged) {
+                fabWasDragged = false; // Reset for next interaction
+                return;
+            }
+            if (sidebar) {
                 sidebar.classList.toggle('open');
                 if (sidebar.classList.contains('open')) {
                     fabButton.textContent = '✕';
@@ -726,8 +790,36 @@ function createFabButton() {
                 }
             }
         });
-        fabButton.ewFabListenerAttached = true; // Mark listener as attached
-        // console.log("EW_CONTENT_DEBUG: createFabButton: Event listener attached.");
+        fabButton.ewFabListenerAttached = true;
+    }
+    fabButton.addEventListener('mousedown', onFabMouseDown);
+
+    if (chrome.runtime?.id) {
+      chrome.storage.local.get(EW_FAB_STORAGE_KEY, (result) => {
+        if (chrome.runtime.lastError) {
+          console.error("EW_CONTENT: Error loading FAB position:", chrome.runtime.lastError.message);
+        }
+        if (fabButton) { // Check if fabButton still exists (e.g. not removed by disabling extension)
+          if (result[EW_FAB_STORAGE_KEY]) {
+            fabButton.style.left = result[EW_FAB_STORAGE_KEY].left + 'px';
+            fabButton.style.top = result[EW_FAB_STORAGE_KEY].top + 'px';
+            fabButton.style.right = 'auto';
+            fabButton.style.bottom = 'auto';
+          } else {
+            // Default position if nothing in storage or key is missing
+            fabButton.style.left = 'auto'; // Let CSS default or explicitly set
+            fabButton.style.top = '20px';  // Default if not in storage
+            fabButton.style.right = '20px';
+            fabButton.style.bottom = 'auto';
+          }
+        }
+      });
+    } else if (fabButton) {
+         // Default position if runtime.id is not available (e.g. tests or unusual context)
+         fabButton.style.left = 'auto';
+         fabButton.style.top = '20px';
+         fabButton.style.right = '20px';
+         fabButton.style.bottom = 'auto';
     }
     // console.log("EW_CONTENT_DEBUG: createFabButton completed.");
 }

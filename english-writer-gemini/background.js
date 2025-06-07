@@ -35,7 +35,7 @@ async function handleTranslationRequest(text, style) {
     return { translatedText: '' };
   }
 
-  const settings = await chrome.storage.sync.get(['apiProvider', 'geminiApiKey', 'openaiApiKey', 'writingStyle']);
+  const settings = await chrome.storage.sync.get(['apiProvider', 'geminiApiKey', 'openaiApiKey', 'writingStyle', 'geminiUserSelectedModel', 'openaiUserSelectedModel']);
   const apiProvider = settings.apiProvider || 'gemini';
   const currentStyle = style || settings.writingStyle || 'formal';
 
@@ -55,7 +55,7 @@ async function handleTranslationRequest(text, style) {
           'Authorization': `Bearer ${settings.openaiApiKey}`
         },
         body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
+          model: settings.openaiUserSelectedModel || 'gpt-3.5-turbo',
           messages: [
             { role: 'system', content: currentStyle === 'formal' ?
               'You are a professional English translator. Translate Traditional Chinese to formal, written English suitable for academic or professional contexts.' :
@@ -84,8 +84,8 @@ async function handleTranslationRequest(text, style) {
     if (!settings.geminiApiKey) {
       throw new Error('Gemini API Key not configured. Please set it in the extension options.');
     }
-    const modelName = 'gemini-1.5-pro-latest'; // Renamed 'model' to 'modelName' for clarity and removed 'models/' prefix
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${settings.geminiApiKey}`; // Changed to v1beta and used modelName directly
+    const geminiModelToUse = settings.geminiUserSelectedModel || 'gemini-1.5-pro-latest';
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModelToUse}:generateContent?key=${settings.geminiApiKey}`;
     try {
       const response = await fetch(API_URL, {
         method: 'POST',
