@@ -1,0 +1,1 @@
+Improves English writing by offering instant Traditional Chinese to English translation and style choices (formal/conversational) directly in website input fields.
