@@ -30,5 +30,3 @@ Effortlessly improve your English writing across the web with English Writer, po
 *   **Potential API Costs:** Use of the Gemini API may incur costs based on your usage. Please refer to Google's Gemini API pricing for details.
 *   **Current Limitations:** Works best with standard HTML input fields and textareas. Support for some rich-text editors may be limited.
 *   **Focus:** Currently supports Traditional Chinese to English translation.
-
-For the Chinese (Traditional) version of this description, please see [README_zh.md](README_zh.md).
